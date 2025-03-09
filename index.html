@@ -19,19 +19,19 @@
 
         // Function to load a new quiz question
         function loadQuiz() {
-            if (currentIndex < quizData.length) {
-                let current = quizData[currentIndex];
-                document.getElementById("sentence").innerText = current.sentence;
-                speakText(current.sentence);
-                document.getElementById("answer").value = "";
-                document.getElementById("message").innerText = "";
-                document.getElementById("nextButton").style.display = "none";
-                document.getElementById("checkButton").style.display = "inline";
-            } else {
-                displaySummary();
-            }
-        }
-
+    if (currentIndex < quizData.length) {
+        let current = quizData[currentIndex];
+        let spokenSentence = current.sentence.replace("____", "blank");
+        document.getElementById("sentence").innerText = current.sentence;
+        speakText(spokenSentence);
+        document.getElementById("answer").value = "";
+        document.getElementById("message").innerText = "";
+        document.getElementById("nextButton").style.display = "none";
+        document.getElementById("checkButton").style.display = "inline";
+    } else {
+        displaySummary();
+    }
+}
         // Function to check the answer
         function checkAnswer() {
             let userAnswer = document.getElementById("answer").value.trim().toLowerCase();
