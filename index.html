@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mobile English Quiz</title>
+  <title>Auto English Quiz</title>
   <style>
     /* Mobile-first design */
     body {
@@ -43,10 +43,6 @@
       touch-action: manipulation;
     }
 
-    button:active {
-      background: #1557b0;
-    }
-
     #sentence {
       font-size: 1.4rem;
       line-height: 1.5;
@@ -64,108 +60,70 @@
       margin: 15px 0;
       text-align: center;
     }
-
-    .controls {
-      display: grid;
-      gap: 10px;
-      margin: 20px 0;
-    }
-
-    .add-form {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin: 25px 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    @media (min-width: 480px) {
-      .controls {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>📱 Mobile English Quiz</h2>
-    
-    <!-- Quiz Section -->
-    <div id="quizSection">
-      <!-- Voice selection dropdown (if available; on mobile this might be limited) -->
-      <select id="voiceSelect"></select>
-      <p id="sentence"></p>
-      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
-      <div class="controls">
-        <button onclick="checkAnswer()">Check Answer</button>
-        <button onclick="nextQuestion()" style="display:none">Next Question</button>
-        <button onclick="replaySentence()">Repeat Sentence</button>
-      </div>
-      <p id="message"></p>
-    </div>
-
-    <!-- Add Sentence Form -->
-    <div class="add-form">
-      <h3>➕ Add New Sentence</h3>
-      <input type="text" id="newSentence" placeholder="Full sentence (e.g., The cat sat on the mat)">
-      <input type="text" id="hiddenWord" placeholder="Word to hide (e.g., cat)">
-      <button onclick="addNewSentence()">Add Sentence</button>
-      <p id="addMessage"></p>
-    </div>
-
-    <!-- Quiz Controls -->
-    <div class="controls">
-      <button onclick="startQuiz()">New Quiz</button>
-      <button onclick="reviewMistakes()" style="display:none">Review Mistakes</button>
-    </div>
+    <h2>🇺🇸 Auto English Quiz</h2>
+    <p id="sentence"></p>
+    <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
+    <p id="message"></p>
   </div>
 
 <script>
 // Quiz Data and State
-// Initially, sentences are loaded from localStorage or a default sentence.
-let sentences = JSON.parse(localStorage.getItem('sentences')) || [
+let sentences = [
   {
     sentence: "The ____ is shining brightly today.",
     fullSentence: "The sun is shining brightly today.",
-    hiddenWord: "sun",
-    note: ""
+    hiddenWord: "sun"
+  },
+  {
+    sentence: "She ____ to the store yesterday.",
+    fullSentence: "She went to the store yesterday.",
+    hiddenWord: "went"
   }
 ];
-let currentQuiz = [];
-let mistakes = [];
 let currentIndex = 0;
 let score = 0;
 let selectedVoice = null;
 
-// Start Quiz: copy all sentences into current quiz and reset state.
+// Auto-configure US female voice
+function setUSFemaleVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  // Try to find a US English female voice
+  const usFemale = voices.find(v => 
+    v.lang === 'en-US' && v.name.toLowerCase().includes('female')
+  );
+  selectedVoice = usFemale || voices.find(v => v.lang === 'en-US') || voices[0];
+}
+
+// Automatic quiz flow
 function startQuiz() {
-  currentQuiz = [...sentences];
-  mistakes = [];
   currentIndex = 0;
   score = 0;
-  document.getElementById('quizSection').style.display = 'block';
+  setUSFemaleVoice();
   loadQuestion();
 }
 
-// Load the current question.
 function loadQuestion() {
-  if (currentIndex >= currentQuiz.length) return showResults();
+  if (currentIndex >= sentences.length) return showResults();
   
-  const current = currentQuiz[currentIndex];
+  const current = sentences[currentIndex];
   document.getElementById('sentence').textContent = current.sentence;
-  // TTS reads the full sentence for context.
-  speakText(current.fullSentence + (current.note ? " Your note: " + current.note : ""));
   document.getElementById('answer').value = '';
   document.getElementById('message').textContent = '';
-  toggleButtons(true);
-  document.getElementById('answer').focus();
+  
+  // Auto-read question with delay
+  setTimeout(() => {
+    speakText(current.fullSentence);
+    document.getElementById('answer').focus();
+  }, 500);
 }
 
-// Check Answer.
 function checkAnswer() {
-  const answerInput = document.getElementById('answer');
-  const userAnswer = answerInput.value.trim().toLowerCase();
-  const correctAnswer = currentQuiz[currentIndex].hiddenWord.toLowerCase();
+  const userAnswer = document.getElementById('answer').value.trim().toLowerCase();
+  const correctAnswer = sentences[currentIndex].hiddenWord.toLowerCase();
 
   if (!userAnswer) {
     showMessage("📝 Please type an answer!", '#ff4444');
@@ -174,59 +132,17 @@ function checkAnswer() {
 
   if (userAnswer === correctAnswer) {
     score++;
-    showMessage(`✅ Correct! (${score}/${currentIndex + 1})`, '#00c851');
+    showMessage(`✅ Correct!`, '#00c851');
+    currentIndex++;
+    // Auto-proceed after 1.5 seconds
+    setTimeout(loadQuestion, 1500);
   } else {
-    mistakes.push(currentQuiz[currentIndex]);
-    showMessage(`❌ Wrong! Correct: ${correctAnswer}`, '#ff4444');
+    showMessage(`❌ Try again!`, '#ff4444');
+    // Auto-replay question after 2 seconds
+    setTimeout(() => speakText(sentences[currentIndex].fullSentence), 2000);
   }
-  
-  answerInput.blur(); // Hide mobile keyboard.
-  toggleButtons(false);
-  currentIndex++;
 }
 
-// Add New Sentence: Enter full sentence and the word to hide.
-function addNewSentence() {
-  const fullSentence = document.getElementById('newSentence').value.trim();
-  const hiddenWord = document.getElementById('hiddenWord').value.trim();
-  const msg = document.getElementById('addMessage');
-
-  if (!fullSentence || !hiddenWord) {
-    msg.textContent = "❌ Please fill both fields!";
-    msg.style.color = '#ff4444';
-    return;
-  }
-
-  if (!new RegExp("\\b" + hiddenWord + "\\b", 'i').test(fullSentence)) {
-    msg.textContent = "❌ Word not found in sentence!";
-    msg.style.color = '#ff4444';
-    return;
-  }
-
-  const displaySentence = fullSentence.replace(new RegExp("\\b" + hiddenWord + "\\b", 'gi'), '____');
-  sentences.push({
-    sentence: displaySentence,
-    fullSentence: fullSentence,
-    hiddenWord: hiddenWord.toLowerCase(),
-    note: ""
-  });
-  
-  localStorage.setItem('sentences', JSON.stringify(sentences));
-  document.getElementById('newSentence').value = '';
-  document.getElementById('hiddenWord').value = '';
-  msg.textContent = "✅ Sentence added! Start new quiz to use it.";
-  msg.style.color = '#00c851';
-}
-
-// Toggle the visibility of Check and Next buttons.
-function toggleButtons(showCheck) {
-  document.querySelector('button[onclick="checkAnswer()"]').style.display = 
-    showCheck ? 'block' : 'none';
-  document.querySelector('button[onclick="nextQuestion()"]').style.display = 
-    showCheck ? 'none' : 'block';
-}
-
-// Show Message (with background color).
 function showMessage(text, color) {
   const msg = document.getElementById('message');
   msg.textContent = text;
@@ -234,59 +150,34 @@ function showMessage(text, color) {
   msg.style.color = color;
 }
 
-// TTS function (mobile-friendly).
 function speakText(text) {
   if (!window.speechSynthesis) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.voice = selectedVoice;
-  utterance.rate = 0.9;
+  utterance.rate = 1.0;
+  utterance.pitch = 1.1;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
 
-// Populate voice list (desktop mostly; mobile may have limited options).
-function populateVoices() {
-  const voices = window.speechSynthesis.getVoices();
-  const select = document.getElementById('voiceSelect');
-  if(select) {
-    select.innerHTML = voices.map(v => 
-      `<option value="${v.name}">${v.name} (${v.lang})</option>`
-    ).join('');
-    selectedVoice = voices[0];
-  }
-}
-
-// Set voice when user selects.
-function setVoice() {
-  const voiceName = document.getElementById('voiceSelect').value;
-  const voices = window.speechSynthesis.getVoices();
-  selectedVoice = voices.find(v => v.name === voiceName);
-}
-
-// Show quiz results.
 function showResults() {
-  document.getElementById('sentence').textContent = `Quiz Complete! You got ${score} out of ${currentQuiz.length} correct.`;
-  speakText(`Quiz Complete! You got ${score} out of ${currentQuiz.length} correct.`);
-  document.getElementById('quizSection').style.display = 'none';
+  document.getElementById('sentence').textContent = `Quiz Complete! Score: ${score}/${sentences.length}`;
+  speakText(`Quiz finished. You got ${score} out of ${sentences.length} correct.`);
+  document.getElementById('answer').style.display = 'none';
 }
 
-// Populate voice list on load.
+// Initialize quiz
 window.onload = () => {
-  populateVoices();
-  speechSynthesis.onvoiceschanged = populateVoices;
-  startQuiz();
+  speechSynthesis.onvoiceschanged = () => {
+    setUSFemaleVoice();
+    startQuiz();
+  };
+  
+  // Handle Enter key
+  document.addEventListener('keypress', e => {
+    if (e.key === 'Enter') checkAnswer();
+  });
 };
-
-// Allow Enter key to submit answer or move to next question.
-document.addEventListener('keypress', e => {
-  if (e.key === 'Enter') {
-    if (document.querySelector('button[onclick="checkAnswer()"]').style.display !== 'none') {
-      checkAnswer();
-    } else {
-      nextQuestion();
-    }
-  }
-});
 </script>
 </body>
 </html>
