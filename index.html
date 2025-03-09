@@ -83,7 +83,8 @@
         let current = currentQuizData[currentIndex];
         document.getElementById("sentence").innerText = current.sentence;
         document.getElementById("noteDisplay").innerText = current.note ? `Note: ${current.note}` : "";
-        speakText(current.sentence + (current.note ? " Your note: " + current.note : ""));
+        // Replace underscores with "blank" for clear TTS output
+        speakText(current.sentence.replace(/_+/g, " blank ") + (current.note ? " Your note: " + current.note : ""));
         document.getElementById("answer").value = "";
         document.getElementById("message").innerText = "";
         document.getElementById("nextButton").style.display = "none";
@@ -161,7 +162,7 @@
         currentQuizData.push(newItem);
       }
       document.getElementById("message").innerText = `Added: "${newSentence}" (Word: ${newWord})`;
-      speakText(`Added new sentence: ${newSentence}`);
+      speakText(`Added new sentence: ${newSentence.replace(/_+/g, " blank ")}`);
       saveProgress();
     }
 
