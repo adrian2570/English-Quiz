@@ -3,25 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>English Quiz with TTS and Voice Options</title>
+  <title>English Quiz with TTS (Google Sheets Data)</title>
+  <!-- Include PapaParse for CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script>
-    // Original quiz data remains unchanged
-    let quizData = [
-      { word: "apple", sentence: "An ____ a day keeps the doctor away.", note: "" },
-      { word: "beautiful", sentence: "This park is so ____ in the morning.", note: "" },
-      { word: "quickly", sentence: "She ran ____ to catch the bus.", note: "" },
-      { word: "strong", sentence: "Exercise makes your body ____.", note: "" },
-      { word: "happy", sentence: "I feel ____ when I play with my friends.", note: "" }
-    ];
-
-    // Variables to manage quiz state
-    let currentQuizData = quizData;
+    // Global variables
+    let quizData = []; // Will be loaded from Google Sheets
+    let currentQuizData = [];
     let incorrectAnswers = [];
     let currentIndex = 0;
     let score = 0;
-    let selectedVoice = null; // to store user's selected voice
+    let selectedVoice = null; // For voice selection
 
-    // Save, load, and clear progress functions (unchanged)...
+    // Google Sheet CSV URL (ensure your sheet is published as CSV)
+    const sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1DPv_Q__Hb2U88mhK8iDig8LORKH_kU_T/export?format=csv&gid=172221852';
+
+    // Load sentences from Google Sheet using PapaParse
+    function loadSentencesFromSheet(callback) {
+      Papa.parse(sheetCSVUrl, {
+        download: true,
+        header: true, // Expect headers: FullSentence, HiddenWords, Note
+        complete: function(results) {
+          const data = results.data.filter(row => row.FullSentence && row.HiddenWords)
+            .map(row => {
+              let hiddenWords = row.HiddenWords.split(',').map(word => word.trim().toLowerCase());
+              // Create display sentence by replacing each hidden word with blanks
+              let displaySentence = row.FullSentence;
+              hiddenWords.forEach(word => {
+                let regex = new RegExp("\\b" + word + "\\b", "gi");
+                displaySentence = displaySentence.replace(regex, "____");
+              });
+              return {
+                fullSentence: row.FullSentence,
+                sentence: displaySentence,
+                hiddenWords: hiddenWords,
+                note: row.Note || ""
+              };
+            });
+          callback(data);
+        },
+        error: function(err) {
+          console.error("Error loading CSV:", err);
+        }
+      });
+    }
+
+    // Save progress to Local Storage
     function saveProgress() {
       const progress = {
         quizData: quizData,
@@ -33,25 +60,22 @@
       localStorage.setItem("quizProgress", JSON.stringify(progress));
     }
 
+    // Load progress from Local Storage
     function loadProgress() {
       const savedProgress = localStorage.getItem("quizProgress");
       return savedProgress ? JSON.parse(savedProgress) : null;
     }
 
+    // Clear progress from Local Storage
     function clearProgress() {
       localStorage.removeItem("quizProgress");
     }
 
-    // Start a new quiz session
+    // Start a new quiz session (if resume is false, start fresh)
     function startQuiz(data, resume = false) {
       if (!resume) {
-        currentQuizData = data.map(item => ({
-          word: item.word,
-          fullSentence: item.sentence.replace(/_+/g, item.word),
-          sentence: item.sentence,
-          hiddenWords: [item.word.toLowerCase()],
-          note: item.note || ""
-        }));
+        // Ensure each item has a note property
+        currentQuizData = data.map(item => ({ ...item, note: item.note || "" }));
         currentIndex = 0;
         score = 0;
         incorrectAnswers = [];
@@ -70,7 +94,7 @@
       loadQuiz();
     }
 
-    // Update UI for quiz mode
+    // Update UI elements for quiz mode
     function updateUIForQuiz() {
       document.getElementById("reviewAllButton").style.display = "none";
       document.getElementById("reviewIncorrectButton").style.display = "none";
@@ -88,8 +112,12 @@
         let current = currentQuizData[currentIndex];
         document.getElementById("sentence").innerText = current.sentence;
         document.getElementById("noteDisplay").innerText = current.note ? `Note: ${current.note}` : "";
-        // TTS reads the full sentence (with the hidden word filled in)
-        speakText(current.fullSentence + (current.note ? " Your note: " + current.note : ""));
+        // For TTS, use the full sentence so you hear the hidden word(s)
+        let ttsText = current.fullSentence;
+        if (current.note) {
+          ttsText += " Your note: " + current.note;
+        }
+        speakText(ttsText);
         document.getElementById("answer").value = "";
         document.getElementById("message").innerText = "";
         document.getElementById("nextButton").style.display = "none";
@@ -109,17 +137,18 @@
         speakText("Please enter a word!");
         return;
       }
-      let correctWord = currentQuizData[currentIndex].hiddenWords.join(",").toLowerCase();
-      if (userAnswer === correctWord) {
+      let current = currentQuizData[currentIndex];
+      let correctAnswer = current.hiddenWords.join(",").toLowerCase();
+      if (userAnswer === correctAnswer) {
         score++;
         document.getElementById("message").innerHTML = `✅ Correct! Score: ${score}/${currentIndex + 1}`;
         document.getElementById("message").style.color = "green";
         speakText("Correct!");
       } else {
-        incorrectAnswers.push({ ...currentQuizData[currentIndex] });
-        document.getElementById("message").innerHTML = `❌ Incorrect! The correct answer was: <b>${correctWord}</b>. Score: ${score}/${currentIndex + 1}`;
+        incorrectAnswers.push({ ...current });
+        document.getElementById("message").innerHTML = `❌ Incorrect! The correct answer was: <b>${correctAnswer}</b>. Score: ${score}/${currentIndex + 1}`;
         document.getElementById("message").style.color = "red";
-        speakText(`Incorrect! The correct answer was ${correctWord}`);
+        speakText(`Incorrect! The correct answer was ${correctAnswer}`);
       }
       document.getElementById("checkButton").style.display = "none";
       document.getElementById("nextButton").style.display = "inline";
@@ -139,7 +168,7 @@
       if (note !== null) {
         currentQuizData[currentIndex].note = note;
         quizData = quizData.map(item =>
-          item.sentence === currentQuizData[currentIndex].sentence ? { ...item, note } : item
+          item.fullSentence === currentQuizData[currentIndex].fullSentence ? { ...item, note } : item
         );
         document.getElementById("noteDisplay").innerText = `Note: ${note}`;
         speakText(`Your note: ${note}`);
@@ -147,20 +176,19 @@
       }
     }
 
-    // Add a new sentence (you enter the full sentence and specify the word(s) to hide)
+    // (Optional) Add a new sentence manually
     function addNewSentence() {
       let fullSentence = prompt("Enter the full sentence (with all words):");
       if (!fullSentence) {
         alert("Please enter a valid sentence.");
         return;
       }
-      let hiddenWordsInput = prompt("Enter the word(s) to hide (separated by commas if more than one):");
+      let hiddenWordsInput = prompt("Enter the word(s) to hide (separated by commas):");
       if (!hiddenWordsInput) {
         alert("Please enter at least one word to hide.");
         return;
       }
       let hiddenWords = hiddenWordsInput.split(",").map(word => word.trim().toLowerCase());
-      // Generate display sentence: for each hidden word, replace it with "____"
       let displaySentence = fullSentence;
       hiddenWords.forEach(word => {
         let regex = new RegExp("\\b" + word + "\\b", "gi");
@@ -173,7 +201,6 @@
         note: ""
       };
       quizData.push(newItem);
-      // Add to currentQuizData as well
       if (currentQuizData === quizData) {
         currentQuizData = quizData;
       } else if (currentIndex < currentQuizData.length) {
@@ -208,7 +235,7 @@
       }
     }
 
-    // Replay the current sentence: display version remains with blanks, TTS uses the full sentence.
+    // Replay the current sentence using the full sentence for TTS
     function replaySentence() {
       let current = currentQuizData[currentIndex];
       let ttsText = current.fullSentence;
@@ -218,14 +245,13 @@
       speakText(ttsText);
     }
 
-    // Speak text using the browser's text-to-speech with cancellation of any ongoing speech
+    // Speak text using TTS; cancel any ongoing speech and use selected voice if set
     function speakText(text) {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
         let speech = new SpeechSynthesisUtterance(text);
         speech.lang = "en-US";
-        // Use selected voice if available
-        if(selectedVoice){
+        if(selectedVoice) {
           speech.voice = selectedVoice;
         }
         window.speechSynthesis.speak(speech);
@@ -234,30 +260,32 @@
       }
     }
 
-    // Populate the voice options once voices are loaded
+    // Populate the voice dropdown (if available)
     function populateVoiceList() {
       if(typeof speechSynthesis === 'undefined') return;
       let voices = speechSynthesis.getVoices();
       let voiceSelect = document.getElementById("voiceSelect");
-      voiceSelect.innerHTML = "";
-      voices.forEach((voice) => {
-        let option = document.createElement("option");
-        option.value = voice.name;
-        option.textContent = `${voice.name} (${voice.lang})`;
-        voiceSelect.appendChild(option);
-      });
+      if(voiceSelect) {
+        voiceSelect.innerHTML = "";
+        voices.forEach((voice) => {
+          let option = document.createElement("option");
+          option.value = voice.name;
+          option.textContent = `${voice.name} (${voice.lang})`;
+          voiceSelect.appendChild(option);
+        });
+      }
     }
 
     window.speechSynthesis.onvoiceschanged = populateVoiceList;
 
-    // When user selects a voice from the dropdown, set the selectedVoice variable.
+    // Set the selected voice from the dropdown
     function setVoice() {
       let voiceName = document.getElementById("voiceSelect").value;
       let voices = window.speechSynthesis.getVoices();
       selectedVoice = voices.find(voice => voice.name === voiceName);
     }
 
-    // Check for saved progress on page load; allow resuming if available.
+    // On page load, load sentences from the Google Sheet and start the quiz
     window.onload = function() {
       const progress = loadProgress();
       if (progress) {
@@ -271,10 +299,16 @@
           document.getElementById("replayButton").style.display = "none";
           document.getElementById("addNoteButton").style.display = "none";
         } else {
-          startQuiz(quizData);
+          loadSentencesFromSheet(function(data) {
+            quizData = data;
+            startQuiz(quizData);
+          });
         }
       } else {
-        startQuiz(quizData);
+        loadSentencesFromSheet(function(data) {
+          quizData = data;
+          startQuiz(quizData);
+        });
       }
     };
 
@@ -287,8 +321,8 @@
   </script>
 </head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-  <h2>🎤 English Quiz with Text-to-Speech</h2>
-  <!-- Voice selection dropdown -->
+  <h2>🎤 English Quiz with TTS (Google Sheets Data)</h2>
+  <!-- Voice selection dropdown (displayed on desktop) -->
   <select id="voiceSelect" onchange="setVoice()" style="padding: 8px; font-size: 16px;"></select>
   <p id="sentence" style="font-size: 20px;"></p>
   <p id="noteDisplay" style="font-size: 16px; color: #555;"></p>
