@@ -83,8 +83,8 @@
         let current = currentQuizData[currentIndex];
         document.getElementById("sentence").innerText = current.sentence;
         document.getElementById("noteDisplay").innerText = current.note ? `Note: ${current.note}` : "";
-        // Replace underscores with "blank" for clear TTS output
-        speakText(current.sentence.replace(/_+/g, " blank ") + (current.note ? " Your note: " + current.note : ""));
+        // For TTS, replace underscores with the correct word.
+        speakText(current.sentence.replace(/_+/g, current.word) + (current.note ? " Your note: " + current.note : ""));
         document.getElementById("answer").value = "";
         document.getElementById("message").innerText = "";
         document.getElementById("nextButton").style.display = "none";
@@ -162,7 +162,8 @@
         currentQuizData.push(newItem);
       }
       document.getElementById("message").innerText = `Added: "${newSentence}" (Word: ${newWord})`;
-      speakText(`Added new sentence: ${newSentence.replace(/_+/g, " blank ")}`);
+      // For new sentence TTS, replace underscores with the new word.
+      speakText(`Added new sentence: ${newSentence.replace(/_+/g, newWord)}`);
       saveProgress();
     }
 
@@ -193,7 +194,7 @@
     // Replay the current sentence (with personal note if available)
     function replaySentence() {
       let current = currentQuizData[currentIndex];
-      let textToSpeak = current.sentence + (current.note ? " Your note: " + current.note : "");
+      let textToSpeak = current.sentence.replace(/_+/g, current.word) + (current.note ? " Your note: " + current.note : "");
       speakText(textToSpeak);
     }
 
