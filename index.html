@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Quiz</title>
+    <title>English Quiz with Text-to-Speech</title>
     <script>
+        // List of quiz sentences with missing words
         const quizData = [
             { word: "apple", sentence: "An ____ a day keeps the doctor away." },
             { word: "beautiful", sentence: "This park is so ____ in the morning." },
@@ -12,47 +13,103 @@
             { word: "strong", sentence: "Exercise makes your body ____." },
             { word: "happy", sentence: "I feel ____ when I play with my friends." }
         ];
+
         let currentIndex = 0;
+        let score = 0;
 
+        // Function to load a new quiz question
         function loadQuiz() {
-    let current = quizData[currentIndex];
-    let spokenSentence = current.sentence.replace("____", "blank"); // Replace underscores with "blank"
-    
-    document.getElementById("sentence").innerText = current.sentence;
-    speakText(spokenSentence); // Speak the modified sentence
-}
-
-
-        function checkAnswer() {
-            const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
-            const correctWord = quizData[currentIndex].word.toLowerCase();
-            
-            const message = userAnswer === correctWord 
-                ? `✅ Correct! The word is: ${correctWord}` 
-                : `❌ Incorrect! The correct word was: ${correctWord}`;
-            
-            document.getElementById("message").innerHTML = message;
-            speakText(message.replace(/[✅❌]/g, ""));
-            
-            currentIndex = (currentIndex + 1) % quizData.length;
-            setTimeout(loadQuiz, 2000);
+            if (currentIndex < quizData.length) {
+                let current = quizData[currentIndex];
+                document.getElementById("sentence").innerText = current.sentence;
+                speakText(current.sentence);
+                document.getElementById("answer").value = "";
+                document.getElementById("message").innerText = "";
+                document.getElementById("nextButton").style.display = "none";
+                document.getElementById("checkButton").style.display = "inline";
+            } else {
+                displaySummary();
+            }
         }
 
-        function speakText(text) {
-    let cleanText = text.replace(/_+/g, " ... "); // Replace underscores with a pause
-    let speech = new SpeechSynthesisUtterance(cleanText);
-    speech.lang = "en-US"; 
-    window.speechSynthesis.speak(speech);
-}
+        // Function to check the answer
+        function checkAnswer() {
+            let userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+            if (!userAnswer) {
+                document.getElementById("message").innerText = "Please enter a word!";
+                speakText("Please enter a word!");
+                return;
+            }
+            let correctWord = quizData[currentIndex].word.toLowerCase();
+            if (userAnswer === correctWord) {
+                score++;
+                document.getElementById("message").innerHTML = `✅ Correct! Score: ${score}/${currentIndex + 1}`;
+                document.getElementById("message").style.color = "green";
+                speakText("Correct!");
+            } else {
+                document.getElementById("message").innerHTML = `❌ Incorrect! The correct word was: <b>${correctWord}</b>. Score: ${score}/${currentIndex + 1}`;
+                document.getElementById("message").style.color = "red";
+                speakText(`Incorrect! The correct word was ${correctWord}`);
+            }
+            document.getElementById("checkButton").style.display = "none";
+            document.getElementById("nextButton").style.display = "inline";
+        }
 
+        // Function to move to the next question
+        function nextQuestion() {
+            currentIndex++;
+            loadQuiz();
+        }
+
+        // Function to display the quiz summary
+        function displaySummary() {
+            document.getElementById("sentence").innerText = `Quiz Complete! You got ${score} out of ${quizData.length} correct.`;
+            document.getElementById("answer").style.display = "none";
+            document.getElementById("checkButton").style.display = "none";
+            document.getElementById("nextButton").style.display = "none";
+            document.getElementById("hintButton").style.display = "none";
+            document.getElementById("replayButton").style.display = "none";
+            speakText(`Quiz Complete! You got ${score} out of ${quizData.length} correct.`);
+        }
+
+        // Function to show a hint
+        function showHint() {
+            let hint = `The word starts with "${quizData[currentIndex].word[0]}".`;
+            document.getElementById("message").innerText = hint;
+            speakText(hint);
+        }
+
+        // Function to replay the sentence
+        function replaySentence() {
+            speakText(quizData[currentIndex].sentence);
+        }
+
+        // Function to speak the text using Google TTS
+        function speakText(text) {
+            let speech = new SpeechSynthesisUtterance(text);
+            speech.lang = "en-US"; // Set language to English
+            window.speechSynthesis.speak(speech);
+        }
+
+        // Load the first quiz question when the page loads
         window.onload = loadQuiz;
+
+        // Allow submitting with Enter key
+        document.addEventListener("keypress", function(event) {
+            if (event.key === "Enter" && document.getElementById("checkButton").style.display !== "none") {
+                checkAnswer();
+            }
+        });
     </script>
 </head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-    <h2>English Quiz</h2>
+    <h2>🎤 English Quiz with Text-to-Speech</h2>
     <p id="sentence" style="font-size: 20px;"></p>
-    <input type="text" id="answer" placeholder="Type the missing word..." style="padding: 10px; font-size: 18px;">
-    <button onclick="checkAnswer()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Check</button>
+    <input type="text" id="answer" placeholder="Type the missing word..." autocorrect="off" spellcheck="false" style="padding: 10px; font-size: 18px;">
+    <button id="checkButton" onclick="checkAnswer()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Check</button>
+    <button id="nextButton" onclick="nextQuestion()" style="display: none; padding: 10px; font-size: 18px; margin-left: 10px;">Next</button>
+    <button id="hintButton" onclick="showHint()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Hint</button>
+    <button id="replayButton" onclick="replaySentence()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Replay</button>
     <p id="message" style="font-size: 18px; font-weight: bold;"></p>
 </body>
 </html>
