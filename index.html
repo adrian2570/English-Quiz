@@ -3,180 +3,178 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Auto English Quiz</title>
+  <title>Mobile Vocab Quiz</title>
   <style>
-    /* Mobile-first design */
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
       padding: 15px;
-      background: #f0f2f5;
+      background: #f8f9fa;
+      color: #333;
     }
-    
     .container {
       max-width: 600px;
       margin: 0 auto;
     }
-
-    h2 {
+    h1 {
       color: #1a73e8;
-      font-size: 1.8rem;
       text-align: center;
       margin: 20px 0;
     }
-
-    input, button, select {
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin: 20px 0;
+    }
+    input, button {
       width: 100%;
       padding: 12px;
       margin: 8px 0;
       border: 2px solid #ddd;
-      border-radius: 8px;
-      font-size: 1.1rem;
+      border-radius: 10px;
+      font-size: 16px;
       box-sizing: border-box;
     }
-
     button {
       background: #1a73e8;
       color: white;
       border: none;
-      font-weight: bold;
-      touch-action: manipulation;
+      font-weight: 500;
     }
-
-    #sentence {
-      font-size: 1.4rem;
-      line-height: 1.5;
-      margin: 25px 0;
-      padding: 15px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    #message {
-      font-size: 1.2rem;
-      padding: 10px;
-      border-radius: 8px;
+    #progress {
+      height: 4px;
+      background: #e9ecef;
+      border-radius: 2px;
       margin: 15px 0;
-      text-align: center;
+    }
+    #progressBar {
+      height: 100%;
+      background: #1a73e8;
+      width: 0%;
+      transition: width 0.3s ease;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>🇺🇸 Auto English Quiz</h2>
-    <p id="sentence"></p>
-    <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
-    <p id="message"></p>
+    <h1>📱 Vocab Quiz</h1>
+    
+    <!-- Quiz Section -->
+    <div class="card">
+      <div id="progress"><div id="progressBar"></div></div>
+      <p id="sentence" style="font-size:1.2em; margin:15px 0"></p>
+      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
+      <div id="message" style="margin:10px 0"></div>
+    </div>
+
+    <!-- Add New Word -->
+    <div class="card">
+      <h3 style="margin-top:0">➕ Add New</h3>
+      <input type="text" id="newSentence" placeholder="Full sentence">
+      <input type="text" id="hiddenWord" placeholder="Word to hide">
+      <button onclick="addWord()">Save Word</button>
+    </div>
   </div>
 
 <script>
-// Quiz Data and State
-let sentences = [
+// Data Storage
+let words = JSON.parse(localStorage.getItem('vocab')) || [
   {
-    sentence: "The ____ is shining brightly today.",
-    fullSentence: "The sun is shining brightly today.",
-    hiddenWord: "sun"
-  },
-  {
-    sentence: "She ____ to the store yesterday.",
-    fullSentence: "She went to the store yesterday.",
-    hiddenWord: "went"
+    sentence: "The ____ is shining brightly.",
+    full: "The sun is shining brightly.",
+    word: "sun"
   }
 ];
 let currentIndex = 0;
-let score = 0;
-let selectedVoice = null;
+let synth = window.speechSynthesis;
+let googleVoice = null;
 
-// Auto-configure US female voice
-function setUSFemaleVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  // Try to find a US English female voice
-  const usFemale = voices.find(v => 
-    v.lang === 'en-US' && v.name.toLowerCase().includes('female')
-  );
-  selectedVoice = usFemale || voices.find(v => v.lang === 'en-US') || voices[0];
-}
-
-// Automatic quiz flow
-function startQuiz() {
-  currentIndex = 0;
-  score = 0;
-  setUSFemaleVoice();
-  loadQuestion();
-}
-
-function loadQuestion() {
-  if (currentIndex >= sentences.length) return showResults();
+// Voice Setup
+async function setupVoices() {
+  const voices = await new Promise(resolve => {
+    synth.onvoiceschanged = () => resolve(synth.getVoices());
+    if (synth.getVoices().length) resolve(synth.getVoices());
+  });
   
-  const current = sentences[currentIndex];
-  document.getElementById('sentence').textContent = current.sentence;
-  document.getElementById('answer').value = '';
-  document.getElementById('message').textContent = '';
-  
-  // Auto-read question with delay
-  setTimeout(() => {
-    speakText(current.fullSentence);
-    document.getElementById('answer').focus();
-  }, 500);
+  // Find Google US English female voice
+  googleVoice = voices.find(v => 
+    v.voiceURI.includes('Google') && 
+    v.lang === 'en-US' &&
+    v.name.toLowerCase().includes('female')
+  ) || voices[0];
 }
 
-function checkAnswer() {
-  const userAnswer = document.getElementById('answer').value.trim().toLowerCase();
-  const correctAnswer = sentences[currentIndex].hiddenWord.toLowerCase();
+// Quiz Functions
+function updateProgress() {
+  const progress = (currentIndex / words.length) * 100;
+  document.getElementById('progressBar').style.width = `${progress}%`;
+}
 
-  if (!userAnswer) {
-    showMessage("📝 Please type an answer!", '#ff4444');
+function showNextWord() {
+  if(currentIndex >= words.length) {
+    document.getElementById('sentence').textContent = "All done! 🎉";
     return;
   }
-
-  if (userAnswer === correctAnswer) {
-    score++;
-    showMessage(`✅ Correct!`, '#00c851');
-    currentIndex++;
-    // Auto-proceed after 1.5 seconds
-    setTimeout(loadQuestion, 1500);
-  } else {
-    showMessage(`❌ Try again!`, '#ff4444');
-    // Auto-replay question after 2 seconds
-    setTimeout(() => speakText(sentences[currentIndex].fullSentence), 2000);
-  }
-}
-
-function showMessage(text, color) {
-  const msg = document.getElementById('message');
-  msg.textContent = text;
-  msg.style.background = color + '20';
-  msg.style.color = color;
-}
-
-function speakText(text) {
-  if (!window.speechSynthesis) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.voice = selectedVoice;
-  utterance.rate = 1.0;
-  utterance.pitch = 1.1;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-}
-
-function showResults() {
-  document.getElementById('sentence').textContent = `Quiz Complete! Score: ${score}/${sentences.length}`;
-  speakText(`Quiz finished. You got ${score} out of ${sentences.length} correct.`);
-  document.getElementById('answer').style.display = 'none';
-}
-
-// Initialize quiz
-window.onload = () => {
-  speechSynthesis.onvoiceschanged = () => {
-    setUSFemaleVoice();
-    startQuiz();
-  };
   
-  // Handle Enter key
-  document.addEventListener('keypress', e => {
-    if (e.key === 'Enter') checkAnswer();
+  const current = words[currentIndex];
+  document.getElementById('sentence').textContent = current.sentence;
+  speak(current.full);
+  document.getElementById('answer').value = '';
+  updateProgress();
+}
+
+function speak(text) {
+  if(!synth || !googleVoice) return;
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = googleVoice;
+  utterance.rate = 1.0;
+  synth.cancel();
+  synth.speak(utterance);
+}
+
+// Word Management
+function addWord() {
+  const sentence = document.getElementById('newSentence').value.trim();
+  const word = document.getElementById('hiddenWord').value.trim();
+  
+  if(!sentence || !word) return;
+  
+  words.push({
+    sentence: sentence.replace(new RegExp(word, 'gi'), '____'),
+    full: sentence,
+    word: word.toLowerCase()
   });
+  
+  localStorage.setItem('vocab', JSON.stringify(words));
+  document.getElementById('newSentence').value = '';
+  document.getElementById('hiddenWord').value = '';
+  showNextWord();
+}
+
+// Answer Check
+document.getElementById('answer').addEventListener('keypress', e => {
+  if(e.key !== 'Enter') return;
+  
+  const answer = e.target.value.trim().toLowerCase();
+  const correct = words[currentIndex]?.word.toLowerCase();
+  
+  if(answer === correct) {
+    document.getElementById('message').textContent = "✅ Correct!";
+    currentIndex++;
+    setTimeout(showNextWord, 1000);
+  } else {
+    document.getElementById('message').textContent = "❌ Try again!";
+    speak(words[currentIndex].full);
+  }
+});
+
+// Initialize
+window.onload = async () => {
+  await setupVoices();
+  showNextWord();
 };
 </script>
 </body>
