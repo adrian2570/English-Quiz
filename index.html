@@ -15,29 +15,28 @@
     let score = 0;
     let selectedVoice = null; // For voice selection
 
-    // Google Sheet CSV URL (ensure your sheet is published as CSV)
+    // Google Sheet CSV URL (publish your sheet as CSV)
     const sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1DPv_Q__Hb2U88mhK8iDig8LORKH_kU_T/export?format=csv&gid=172221852';
 
     // Load sentences from Google Sheet using PapaParse
     function loadSentencesFromSheet(callback) {
       Papa.parse(sheetCSVUrl, {
         download: true,
-        header: true, // Expect headers: FullSentence, HiddenWords, Note
+        header: true, // Expects headers "word" and "example"
         complete: function(results) {
-          const data = results.data.filter(row => row.FullSentence && row.HiddenWords)
+          const data = results.data.filter(row => row.word && row.example)
             .map(row => {
-              let hiddenWords = row.HiddenWords.split(',').map(word => word.trim().toLowerCase());
-              // Create display sentence by replacing each hidden word with blanks
-              let displaySentence = row.FullSentence;
-              hiddenWords.forEach(word => {
-                let regex = new RegExp("\\b" + word + "\\b", "gi");
-                displaySentence = displaySentence.replace(regex, "____");
-              });
+              let word = row.word.trim();
+              let fullSentence = row.example.trim();
+              // Create display sentence by replacing the exact word with a blank
+              let regex = new RegExp("\\b" + word + "\\b", "gi");
+              let displaySentence = fullSentence.replace(regex, "____");
               return {
-                fullSentence: row.FullSentence,
+                word: word,
+                fullSentence: fullSentence,
                 sentence: displaySentence,
-                hiddenWords: hiddenWords,
-                note: row.Note || ""
+                hiddenWords: [word.toLowerCase()],
+                note: row.note ? row.note.trim() : ""
               };
             });
           callback(data);
@@ -71,10 +70,9 @@
       localStorage.removeItem("quizProgress");
     }
 
-    // Start a new quiz session (if resume is false, start fresh)
+    // Start a new quiz session; if resume is false, start fresh.
     function startQuiz(data, resume = false) {
       if (!resume) {
-        // Ensure each item has a note property
         currentQuizData = data.map(item => ({ ...item, note: item.note || "" }));
         currentIndex = 0;
         score = 0;
@@ -94,7 +92,7 @@
       loadQuiz();
     }
 
-    // Update UI elements for quiz mode
+    // Update UI for quiz mode
     function updateUIForQuiz() {
       document.getElementById("reviewAllButton").style.display = "none";
       document.getElementById("reviewIncorrectButton").style.display = "none";
@@ -112,7 +110,7 @@
         let current = currentQuizData[currentIndex];
         document.getElementById("sentence").innerText = current.sentence;
         document.getElementById("noteDisplay").innerText = current.note ? `Note: ${current.note}` : "";
-        // For TTS, use the full sentence so you hear the hidden word(s)
+        // For TTS, read the full sentence (so you hear the hidden word)
         let ttsText = current.fullSentence;
         if (current.note) {
           ttsText += " Your note: " + current.note;
@@ -167,6 +165,7 @@
       let note = prompt("Enter your personal note for this sentence:", currentQuizData[currentIndex].note || "");
       if (note !== null) {
         currentQuizData[currentIndex].note = note;
+        // Sync note back to quizData if necessary
         quizData = quizData.map(item =>
           item.fullSentence === currentQuizData[currentIndex].fullSentence ? { ...item, note } : item
         );
@@ -176,28 +175,25 @@
       }
     }
 
-    // (Optional) Add a new sentence manually
+    // (Optional) Add a new sentence manually (full sentence and specify which word to hide)
     function addNewSentence() {
       let fullSentence = prompt("Enter the full sentence (with all words):");
       if (!fullSentence) {
         alert("Please enter a valid sentence.");
         return;
       }
-      let hiddenWordsInput = prompt("Enter the word(s) to hide (separated by commas):");
-      if (!hiddenWordsInput) {
-        alert("Please enter at least one word to hide.");
+      let hiddenWord = prompt("Enter the word to hide from the sentence:");
+      if (!hiddenWord) {
+        alert("Please enter a valid word!");
         return;
       }
-      let hiddenWords = hiddenWordsInput.split(",").map(word => word.trim().toLowerCase());
-      let displaySentence = fullSentence;
-      hiddenWords.forEach(word => {
-        let regex = new RegExp("\\b" + word + "\\b", "gi");
-        displaySentence = displaySentence.replace(regex, "____");
-      });
+      // Create display sentence by replacing the exact word with blanks
+      let regex = new RegExp("\\b" + hiddenWord.trim() + "\\b", "gi");
+      let displaySentence = fullSentence.replace(regex, "____");
       const newItem = {
         fullSentence: fullSentence,
         sentence: displaySentence,
-        hiddenWords: hiddenWords,
+        hiddenWords: [hiddenWord.trim().toLowerCase()],
         note: ""
       };
       quizData.push(newItem);
@@ -206,7 +202,7 @@
       } else if (currentIndex < currentQuizData.length) {
         currentQuizData.push(newItem);
       }
-      document.getElementById("message").innerText = `Added: "${displaySentence}" (Hidden: ${hiddenWords.join(", ")})`;
+      document.getElementById("message").innerText = `Added: "${displaySentence}" (Hidden: ${hiddenWord})`;
       speakText(`Added new sentence: ${fullSentence}`);
       saveProgress();
     }
@@ -245,7 +241,7 @@
       speakText(ttsText);
     }
 
-    // Speak text using TTS; cancel any ongoing speech and use selected voice if set
+    // Speak text using TTS (cancel ongoing speech) and use selected voice if set
     function speakText(text) {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
@@ -285,7 +281,7 @@
       selectedVoice = voices.find(voice => voice.name === voiceName);
     }
 
-    // On page load, load sentences from the Google Sheet and start the quiz
+    // On page load, load sentences from the Google Sheet (or from saved progress) and start the quiz
     window.onload = function() {
       const progress = loadProgress();
       if (progress) {
