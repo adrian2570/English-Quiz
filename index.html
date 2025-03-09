@@ -86,10 +86,11 @@
 
         // Function to speak the text using Google TTS
         function speakText(text) {
-            let speech = new SpeechSynthesisUtterance(text);
-            speech.lang = "en-US"; // Set language to English
-            window.speechSynthesis.speak(speech);
-        }
+    let cleanText = text.replace(/_+/g, " ... "); // Replace underscores with a pause
+    let speech = new SpeechSynthesisUtterance(cleanText);
+    speech.lang = "en-US"; 
+    window.speechSynthesis.speak(speech);
+}
 
         // Load the first quiz question when the page loads
         window.onload = loadQuiz;
