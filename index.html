@@ -2,74 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>English Quiz with TTS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mobile English Quiz</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
-    .controls { margin: 20px 0; }
-    button, input, select { padding: 8px 12px; margin: 5px; }
-    #sentence { font-size: 1.2em; margin: 20px 0; }
-    #message { font-weight: bold; margin: 15px 0; }
-    .add-form { background: #f5f5f5; padding: 15px; margin: 20px 0; }
+    /* Mobile-first design */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 15px;
+      background: #f0f2f5;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      color: #1a73e8;
+      font-size: 1.8rem;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    input, button, select {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      font-weight: bold;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      background: #1557b0;
+    }
+
+    #sentence {
+      font-size: 1.4rem;
+      line-height: 1.5;
+      margin: 25px 0;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #message {
+      font-size: 1.2rem;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+    }
+
+    .controls {
+      display: grid;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .add-form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 25px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    @media (min-width: 480px) {
+      .controls {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>🎤 Interactive English Quiz</h2>
-  <select id="voiceSelect"></select>
-
-  <div id="quizSection">
-    <p id="sentence"></p>
-    <p id="noteDisplay"></p>
-    <input type="text" id="answer" placeholder="Type missing word...">
-    <div class="controls">
-      <button onclick="checkAnswer()">Check</button>
-      <button onclick="nextQuestion()" style="display:none">Next</button>
-      <button onclick="replaySentence()">Replay</button>
+  <div class="container">
+    <h2>📱 Mobile English Quiz</h2>
+    
+    <!-- Quiz Section -->
+    <div id="quizSection">
+      <select id="voiceSelect"></select>
+      <p id="sentence"></p>
+      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
+      <div class="controls">
+        <button onclick="checkAnswer()">Check Answer</button>
+        <button onclick="nextQuestion()" style="display:none">Next Question</button>
+        <button onclick="replaySentence()">Repeat Sentence</button>
+      </div>
+      <p id="message"></p>
     </div>
-    <p id="message"></p>
-  </div>
 
-  <div class="add-form">
-    <h3>Add New Sentence</h3>
-    <input type="text" id="newSentence" placeholder="Full sentence" style="width: 100%">
-    <input type="text" id="hiddenWord" placeholder="Word to hide">
-    <button onclick="addNewSentence()">Add Sentence</button>
-  </div>
+    <!-- Add Sentence Form -->
+    <div class="add-form">
+      <h3>➕ Add New Sentence</h3>
+      <input type="text" id="newSentence" placeholder="Full sentence (e.g., The cat sat on the mat)">
+      <input type="text" id="hiddenWord" placeholder="Word to hide (e.g., cat)">
+      <button onclick="addNewSentence()">Add Sentence</button>
+      <p id="addMessage"></p>
+    </div>
 
-  <div class="controls">
-    <button onclick="startQuiz()">Start New Quiz</button>
-    <button onclick="reviewMistakes()" style="display:none">Review Mistakes</button>
+    <!-- Quiz Controls -->
+    <div class="controls">
+      <button onclick="startQuiz()">New Quiz</button>
+      <button onclick="reviewMistakes()" style="display:none">Review Mistakes</button>
+    </div>
   </div>
 
 <script>
-// Initial sample sentences
-let sentences = [
+// Quiz Data and State
+let sentences = JSON.parse(localStorage.getItem('sentences')) || [
   {
-    sentence: "The ____ is shining brightly today.", 
+    sentence: "The ____ is shining brightly today.",
     fullSentence: "The sun is shining brightly today.",
     hiddenWord: "sun",
     note: ""
-  },
-  {
-    sentence: "She ____ to the store yesterday.",
-    fullSentence: "She went to the store yesterday.",
-    hiddenWord: "went",
-    note: ""
   }
 ];
-
 let currentQuiz = [];
 let mistakes = [];
 let currentIndex = 0;
 let score = 0;
 let selectedVoice = null;
 
+// Mobile-friendly Functions
 function startQuiz() {
   currentQuiz = [...sentences];
   mistakes = [];
   currentIndex = 0;
   score = 0;
-  document.querySelector("#reviewMistakes").style.display = "none";
+  document.getElementById('quizSection').style.display = 'block';
   loadQuestion();
 }
 
@@ -77,121 +149,117 @@ function loadQuestion() {
   if (currentIndex >= currentQuiz.length) return showResults();
   
   const current = currentQuiz[currentIndex];
-  document.getElementById("sentence").textContent = current.sentence;
-  document.getElementById("noteDisplay").textContent = current.note || "";
+  document.getElementById('sentence').textContent = current.sentence;
   speakText(current.fullSentence);
-  document.getElementById("answer").value = "";
-  document.getElementById("message").textContent = "";
+  document.getElementById('answer').value = '';
+  document.getElementById('message').textContent = '';
   toggleButtons(true);
+  document.getElementById('answer').focus();
 }
 
 function checkAnswer() {
-  const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+  const answerInput = document.getElementById('answer');
+  const userAnswer = answerInput.value.trim().toLowerCase();
   const correctAnswer = currentQuiz[currentIndex].hiddenWord.toLowerCase();
 
   if (!userAnswer) {
-    showMessage("Please enter an answer!", "red");
+    showMessage("📝 Please type an answer!", '#ff4444');
     return;
   }
 
   if (userAnswer === correctAnswer) {
     score++;
-    showMessage(`✅ Correct! (${score}/${currentIndex + 1})`, "green");
+    showMessage(`✅ Correct! (${score}/${currentIndex + 1})`, '#00c851');
   } else {
     mistakes.push(currentQuiz[currentIndex]);
-    showMessage(`❌ Incorrect! Correct answer: ${correctAnswer}`, "red");
+    showMessage(`❌ Wrong! Correct: ${correctAnswer}`, '#ff4444');
   }
+  
+  answerInput.blur(); // Hide mobile keyboard
   toggleButtons(false);
   currentIndex++;
 }
 
-function toggleButtons(showCheck) {
-  document.querySelector("button[onclick='checkAnswer()']").style.display = 
-    showCheck ? "inline-block" : "none";
-  document.querySelector("button[onclick='nextQuestion()']").style.display = 
-    showCheck ? "none" : "inline-block";
-}
-
-function nextQuestion() {
-  loadQuestion();
-}
-
 function addNewSentence() {
-  const fullSentence = document.getElementById("newSentence").value.trim();
-  const hiddenWord = document.getElementById("hiddenWord").value.trim();
-  
+  const fullSentence = document.getElementById('newSentence').value.trim();
+  const hiddenWord = document.getElementById('hiddenWord').value.trim();
+  const msg = document.getElementById('addMessage');
+
   if (!fullSentence || !hiddenWord) {
-    alert("Please fill both fields!");
+    msg.textContent = "❌ Please fill both fields!";
+    msg.style.color = '#ff4444';
     return;
   }
 
-  const newSentence = {
-    sentence: fullSentence.replace(new RegExp(`\\b${hiddenWord}\\b`, "i"), "____"),
+  if (!new RegExp(hiddenWord, 'i').test(fullSentence)) {
+    msg.textContent = "❌ Word not found in sentence!";
+    msg.style.color = '#ff4444';
+    return;
+  }
+
+  sentences.push({
+    sentence: fullSentence.replace(new RegExp(hiddenWord, 'i'), '____'),
     fullSentence: fullSentence,
-    hiddenWord: hiddenWord.toLowerCase(),
-    note: ""
-  };
-
-  sentences.push(newSentence);
-  saveSentences();
-  document.getElementById("newSentence").value = "";
-  document.getElementById("hiddenWord").value = "";
-  showMessage("Sentence added successfully!", "green");
+    hiddenWord: hiddenWord.toLowerCase()
+  });
+  
+  localStorage.setItem('sentences', JSON.stringify(sentences));
+  document.getElementById('newSentence').value = '';
+  document.getElementById('hiddenWord').value = '';
+  msg.textContent = "✅ Sentence added! Start new quiz to use it.";
+  msg.style.color = '#00c851';
 }
 
-function reviewMistakes() {
-  if (mistakes.length === 0) return;
-  currentQuiz = [...mistakes];
-  mistakes = [];
-  currentIndex = 0;
-  score = 0;
-  loadQuestion();
+// Helper Functions
+function toggleButtons(showCheck) {
+  document.querySelector('button[onclick="checkAnswer()"]').style.display = 
+    showCheck ? 'block' : 'none';
+  document.querySelector('button[onclick="nextQuestion()"]').style.display = 
+    showCheck ? 'none' : 'block';
 }
 
-function showResults() {
-  document.getElementById("sentence").innerHTML = `
-    <h3>Quiz Complete!</h3>
-    <p>Score: ${score}/${currentQuiz.length}</p>
-    ${mistakes.length > 0 ? '<button onclick="reviewMistakes()">Review Mistakes</button>' : ''}
-  `;
-  document.getElementById("answer").style.display = "none";
-  toggleButtons(false);
+function showMessage(text, color) {
+  const msg = document.getElementById('message');
+  msg.textContent = text;
+  msg.style.background = color + '20';
+  msg.style.color = color;
 }
 
-// TTS Functions
+// Mobile-optimized TTS
 function speakText(text) {
   if (!window.speechSynthesis) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.voice = selectedVoice;
-  window.speechSynthesis.cancel();
+  utterance.rate = 0.9;
+  window.speechSynthesis.sancel();
   window.speechSynthesis.speak(utterance);
 }
 
+// Voice Selection
 function populateVoices() {
   const voices = window.speechSynthesis.getVoices();
-  const select = document.getElementById("voiceSelect");
+  const select = document.getElementById('voiceSelect');
   select.innerHTML = voices.map(v => 
-    `<option value="${v.name}">${v.name} (${v.lang})</option>`
+    `<option value="${v.name}">${v.name}</option>`
   ).join('');
   selectedVoice = voices[0];
 }
 
-// Local storage
-function saveSentences() {
-  localStorage.setItem("sentences", JSON.stringify(sentences));
-}
-
-// Initial setup
+// Initialize
 window.onload = () => {
-  const saved = localStorage.getItem("sentences");
-  if (saved) sentences = JSON.parse(saved);
   populateVoices();
   speechSynthesis.onvoiceschanged = populateVoices;
   startQuiz();
 };
 
-document.addEventListener("keypress", e => {
-  if (e.key === "Enter") document.querySelector("button[onclick='checkAnswer()']")?.click();
+document.addEventListener('keypress', e => {
+  if (e.key === 'Enter') {
+    if (document.querySelector('button[onclick="checkAnswer()"]').style.display !== 'none') {
+      checkAnswer();
+    } else {
+      nextQuestion();
+    }
+  }
 });
 </script>
 </body>
