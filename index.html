@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Quiz with Text-to-Speech</title>
+    <title>English Quiz</title>
     <script>
-        // List of quiz sentences with missing words
         const quizData = [
             { word: "apple", sentence: "An ____ a day keeps the doctor away." },
             { word: "beautiful", sentence: "This park is so ____ in the morning." },
@@ -13,49 +12,42 @@
             { word: "strong", sentence: "Exercise makes your body ____." },
             { word: "happy", sentence: "I feel ____ when I play with my friends." }
         ];
-
         let currentIndex = 0;
 
-        // Function to load a new quiz question
         function loadQuiz() {
-            let current = quizData[currentIndex];
+            const current = quizData[currentIndex];
             document.getElementById("sentence").innerText = current.sentence;
             speakText(current.sentence);
             document.getElementById("answer").value = "";
             document.getElementById("message").innerText = "";
         }
 
-        // Function to check the answer
         function checkAnswer() {
-            let userAnswer = document.getElementById("answer").value.trim().toLowerCase();
-            let correctWord = quizData[currentIndex].word.toLowerCase();
-
-            if (userAnswer === correctWord) {
-                document.getElementById("message").innerHTML = "✅ Correct! The word is: <b>" + correctWord + "</b>";
-                speakText("Correct! The word is " + correctWord);
-            } else {
-                document.getElementById("message").innerHTML = "❌ Incorrect! The correct word was: <b>" + correctWord + "</b>";
-                speakText("Incorrect! The correct word was " + correctWord);
-            }
-
-            // Move to the next question
+            const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+            const correctWord = quizData[currentIndex].word.toLowerCase();
+            
+            const message = userAnswer === correctWord 
+                ? `✅ Correct! The word is: ${correctWord}` 
+                : `❌ Incorrect! The correct word was: ${correctWord}`;
+            
+            document.getElementById("message").innerHTML = message;
+            speakText(message.replace(/[✅❌]/g, ""));
+            
             currentIndex = (currentIndex + 1) % quizData.length;
             setTimeout(loadQuiz, 2000);
         }
 
-        // Function to speak the text using Google TTS
         function speakText(text) {
-            let speech = new SpeechSynthesisUtterance(text);
-            speech.lang = "en-US"; // Set language to English
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = "en-US";
             window.speechSynthesis.speak(speech);
         }
 
-        // Load the first quiz question when the page loads
         window.onload = loadQuiz;
     </script>
 </head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-    <h2>🎤 English Quiz with Text-to-Speech</h2>
+    <h2>English Quiz</h2>
     <p id="sentence" style="font-size: 20px;"></p>
     <input type="text" id="answer" placeholder="Type the missing word..." style="padding: 10px; font-size: 18px;">
     <button onclick="checkAnswer()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Check</button>
