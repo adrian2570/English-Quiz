@@ -15,12 +15,13 @@
         let currentIndex = 0;
 
         function loadQuiz() {
-            const current = quizData[currentIndex];
-            document.getElementById("sentence").innerText = current.sentence;
-            speakText(current.sentence);
-            document.getElementById("answer").value = "";
-            document.getElementById("message").innerText = "";
-        }
+    let current = quizData[currentIndex];
+    let spokenSentence = current.sentence.replace("____", "blank"); // Replace underscores with "blank"
+    
+    document.getElementById("sentence").innerText = current.sentence;
+    speakText(spokenSentence); // Speak the modified sentence
+}
+
 
         function checkAnswer() {
             const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
