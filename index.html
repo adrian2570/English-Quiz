@@ -1,116 +1,257 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>English Quiz with Text-to-Speech</title>
-    <script>
-        // List of quiz sentences with missing words
-        const quizData = [
-            { word: "apple", sentence: "An ____ a day keeps the doctor away." },
-            { word: "beautiful", sentence: "This park is so ____ in the morning." },
-            { word: "quickly", sentence: "She ran ____ to catch the bus." },
-            { word: "strong", sentence: "Exercise makes your body ____." },
-            { word: "happy", sentence: "I feel ____ when I play with my friends." }
-        ];
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>English Quiz with Text-to-Speech</title>
+  <script>
+    // Original list of quiz sentences with missing words
+    let quizData = [
+      { word: "apple", sentence: "An ____ a day keeps the doctor away.", note: "" },
+      { word: "beautiful", sentence: "This park is so ____ in the morning.", note: "" },
+      { word: "quickly", sentence: "She ran ____ to catch the bus.", note: "" },
+      { word: "strong", sentence: "Exercise makes your body ____.", note: "" },
+      { word: "happy", sentence: "I feel ____ when I play with my friends.", note: "" }
+    ];
 
-        let currentIndex = 0;
-        let score = 0;
+    // Variables to manage quiz state
+    let currentQuizData = quizData;
+    let incorrectAnswers = [];
+    let currentIndex = 0;
+    let score = 0;
 
-        // Function to load a new quiz question
-        function loadQuiz() {
-    if (currentIndex < quizData.length) {
-        let current = quizData[currentIndex];
-        let spokenSentence = current.sentence.replace("____", "blank");
+    // Save progress to Local Storage
+    function saveProgress() {
+      const progress = {
+        quizData: quizData,
+        currentQuizData: currentQuizData,
+        incorrectAnswers: incorrectAnswers,
+        currentIndex: currentIndex,
+        score: score
+      };
+      localStorage.setItem("quizProgress", JSON.stringify(progress));
+    }
+
+    // Load progress from Local Storage
+    function loadProgress() {
+      const savedProgress = localStorage.getItem("quizProgress");
+      return savedProgress ? JSON.parse(savedProgress) : null;
+    }
+
+    // Clear progress from Local Storage
+    function clearProgress() {
+      localStorage.removeItem("quizProgress");
+    }
+
+    // Start a new quiz session with the provided data; 'resume' flag allows restoring progress.
+    function startQuiz(data, resume = false) {
+      if (!resume) {
+        currentQuizData = data.map(item => ({ ...item, note: item.note || "" }));
+        currentIndex = 0;
+        score = 0;
+        incorrectAnswers = [];
+        clearProgress();
+      } else {
+        const progress = loadProgress();
+        if (progress) {
+          quizData = progress.quizData;
+          currentQuizData = progress.currentQuizData;
+          incorrectAnswers = progress.incorrectAnswers;
+          currentIndex = progress.currentIndex;
+          score = progress.score;
+        }
+      }
+      updateUIForQuiz();
+      loadQuiz();
+    }
+
+    // Update UI for quiz mode
+    function updateUIForQuiz() {
+      document.getElementById("reviewAllButton").style.display = "none";
+      document.getElementById("reviewIncorrectButton").style.display = "none";
+      document.getElementById("resumeButton").style.display = "none";
+      document.getElementById("startNewButton").style.display = "none";
+      document.getElementById("answer").style.display = "inline";
+      document.getElementById("checkButton").style.display = "inline";
+      document.getElementById("replayButton").style.display = "inline";
+      document.getElementById("addNoteButton").style.display = "none";
+    }
+
+    // Load the current quiz question
+    function loadQuiz() {
+      if (currentIndex < currentQuizData.length) {
+        let current = currentQuizData[currentIndex];
         document.getElementById("sentence").innerText = current.sentence;
-        speakText(spokenSentence);
+        document.getElementById("noteDisplay").innerText = current.note ? `Note: ${current.note}` : "";
+        speakText(current.sentence + (current.note ? " Your note: " + current.note : ""));
         document.getElementById("answer").value = "";
         document.getElementById("message").innerText = "";
         document.getElementById("nextButton").style.display = "none";
         document.getElementById("checkButton").style.display = "inline";
-    } else {
+        document.getElementById("addNoteButton").style.display = "none";
+      } else {
         displaySummary();
+      }
+      saveProgress();
     }
-}
-        // Function to check the answer
-        function checkAnswer() {
-            let userAnswer = document.getElementById("answer").value.trim().toLowerCase();
-            if (!userAnswer) {
-                document.getElementById("message").innerText = "Please enter a word!";
-                speakText("Please enter a word!");
-                return;
-            }
-            let correctWord = quizData[currentIndex].word.toLowerCase();
-            if (userAnswer === correctWord) {
-                score++;
-                document.getElementById("message").innerHTML = `✅ Correct! Score: ${score}/${currentIndex + 1}`;
-                document.getElementById("message").style.color = "green";
-                speakText("Correct!");
-            } else {
-                document.getElementById("message").innerHTML = `❌ Incorrect! The correct word was: <b>${correctWord}</b>. Score: ${score}/${currentIndex + 1}`;
-                document.getElementById("message").style.color = "red";
-                speakText(`Incorrect! The correct word was ${correctWord}`);
-            }
-            document.getElementById("checkButton").style.display = "none";
-            document.getElementById("nextButton").style.display = "inline";
+
+    // Check the user's answer
+    function checkAnswer() {
+      let userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+      if (!userAnswer) {
+        document.getElementById("message").innerText = "Please enter a word!";
+        speakText("Please enter a word!");
+        return;
+      }
+      let correctWord = currentQuizData[currentIndex].word.toLowerCase();
+      if (userAnswer === correctWord) {
+        score++;
+        document.getElementById("message").innerHTML = `✅ Correct! Score: ${score}/${currentIndex + 1}`;
+        document.getElementById("message").style.color = "green";
+        speakText("Correct!");
+      } else {
+        incorrectAnswers.push({ ...currentQuizData[currentIndex] });
+        document.getElementById("message").innerHTML = `❌ Incorrect! The correct word was: <b>${correctWord}</b>. Score: ${score}/${currentIndex + 1}`;
+        document.getElementById("message").style.color = "red";
+        speakText(`Incorrect! The correct word was ${correctWord}`);
+      }
+      document.getElementById("checkButton").style.display = "none";
+      document.getElementById("nextButton").style.display = "inline";
+      document.getElementById("addNoteButton").style.display = "inline";
+      saveProgress();
+    }
+
+    // Move to the next question
+    function nextQuestion() {
+      currentIndex++;
+      loadQuiz();
+    }
+
+    // Add a personal note for the current sentence
+    function addNote() {
+      let note = prompt("Enter your personal note for this sentence:", currentQuizData[currentIndex].note || "");
+      if (note !== null) {
+        currentQuizData[currentIndex].note = note;
+        quizData = quizData.map(item =>
+          item.sentence === currentQuizData[currentIndex].sentence ? { ...item, note } : item
+        );
+        document.getElementById("noteDisplay").innerText = `Note: ${note}`;
+        speakText(`Your note: ${note}`);
+        saveProgress();
+      }
+    }
+
+    // Add a new sentence to quizData and optionally currentQuizData
+    function addNewSentence() {
+      let newSentence = prompt("Enter a new sentence with ____ as the placeholder:");
+      if (!newSentence || !newSentence.includes("____")) {
+        alert("Please enter a valid sentence with ____ as the placeholder!");
+        return;
+      }
+      let newWord = prompt("Enter the correct word for the blank:");
+      if (!newWord) {
+        alert("Please enter a valid word!");
+        return;
+      }
+      const newItem = { word: newWord.trim().toLowerCase(), sentence: newSentence.trim(), note: "" };
+      quizData.push(newItem);
+      if (currentQuizData === quizData) {
+        currentQuizData = quizData;
+      } else if (currentIndex < currentQuizData.length) {
+        currentQuizData.push(newItem);
+      }
+      document.getElementById("message").innerText = `Added: "${newSentence}" (Word: ${newWord})`;
+      speakText(`Added new sentence: ${newSentence}`);
+      saveProgress();
+    }
+
+    // Display the quiz summary and review options
+    function displaySummary() {
+      document.getElementById("sentence").innerText = `Quiz Complete! You got ${score} out of ${currentQuizData.length} correct.`;
+      document.getElementById("noteDisplay").innerText = "";
+      document.getElementById("answer").style.display = "none";
+      document.getElementById("checkButton").style.display = "none";
+      document.getElementById("nextButton").style.display = "none";
+      document.getElementById("replayButton").style.display = "none";
+      document.getElementById("addNoteButton").style.display = "none";
+      speakText(`Quiz Complete! You got ${score} out of ${currentQuizData.length} correct.`);
+      document.getElementById("reviewAllButton").style.display = "inline";
+      if (incorrectAnswers.length > 0) {
+        document.getElementById("reviewIncorrectButton").style.display = "inline";
+      }
+      saveProgress();
+    }
+
+    // Review only incorrect words
+    function reviewIncorrect() {
+      if (incorrectAnswers.length > 0) {
+        startQuiz(incorrectAnswers);
+      }
+    }
+
+    // Replay the current sentence (with personal note if available)
+    function replaySentence() {
+      let current = currentQuizData[currentIndex];
+      let textToSpeak = current.sentence + (current.note ? " Your note: " + current.note : "");
+      speakText(textToSpeak);
+    }
+
+    // Speak text using the browser's text-to-speech with cancellation of any ongoing speech
+    function speakText(text) {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel(); // Cancel any ongoing speech
+        let speech = new SpeechSynthesisUtterance(text);
+        speech.lang = "en-US";
+        window.speechSynthesis.speak(speech);
+      } else {
+        console.log("Speech synthesis not supported: " + text);
+      }
+    }
+
+    // Check for saved progress on page load; allow resuming if available.
+    window.onload = function() {
+      const progress = loadProgress();
+      if (progress) {
+        quizData = progress.quizData;
+        if (progress.currentIndex < progress.currentQuizData.length) {
+          document.getElementById("sentence").innerText = "You have saved progress!";
+          document.getElementById("resumeButton").style.display = "inline";
+          document.getElementById("startNewButton").style.display = "inline";
+          document.getElementById("answer").style.display = "none";
+          document.getElementById("checkButton").style.display = "none";
+          document.getElementById("replayButton").style.display = "none";
+          document.getElementById("addNoteButton").style.display = "none";
+        } else {
+          startQuiz(quizData);
         }
+      } else {
+        startQuiz(quizData);
+      }
+    };
 
-        // Function to move to the next question
-        function nextQuestion() {
-            currentIndex++;
-            loadQuiz();
-        }
-
-        // Function to display the quiz summary
-        function displaySummary() {
-            document.getElementById("sentence").innerText = `Quiz Complete! You got ${score} out of ${quizData.length} correct.`;
-            document.getElementById("answer").style.display = "none";
-            document.getElementById("checkButton").style.display = "none";
-            document.getElementById("nextButton").style.display = "none";
-            document.getElementById("hintButton").style.display = "none";
-            document.getElementById("replayButton").style.display = "none";
-            speakText(`Quiz Complete! You got ${score} out of ${quizData.length} correct.`);
-        }
-
-        // Function to show a hint
-        function showHint() {
-            let hint = `The word starts with "${quizData[currentIndex].word[0]}".`;
-            document.getElementById("message").innerText = hint;
-            speakText(hint);
-        }
-
-        // Function to replay the sentence
-        function replaySentence() {
-            speakText(quizData[currentIndex].sentence);
-        }
-
-        // Function to speak the text using Google TTS
-        function speakText(text) {
-    let cleanText = text.replace(/_+/g, " ... "); // Replace underscores with a pause
-    let speech = new SpeechSynthesisUtterance(cleanText);
-    speech.lang = "en-US"; 
-    window.speechSynthesis.speak(speech);
-}
-
-        // Load the first quiz question when the page loads
-        window.onload = loadQuiz;
-
-        // Allow submitting with Enter key
-        document.addEventListener("keypress", function(event) {
-            if (event.key === "Enter" && document.getElementById("checkButton").style.display !== "none") {
-                checkAnswer();
-            }
-        });
-    </script>
+    // Allow submitting answers with the Enter key
+    document.addEventListener("keypress", function(event) {
+      if (event.key === "Enter" && document.getElementById("checkButton").style.display !== "none") {
+        checkAnswer();
+      }
+    });
+  </script>
 </head>
 <body style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-    <h2>🎤 English Quiz with Text-to-Speech</h2>
-    <p id="sentence" style="font-size: 20px;"></p>
-    <input type="text" id="answer" placeholder="Type the missing word..." autocorrect="off" spellcheck="false" style="padding: 10px; font-size: 18px;">
-    <button id="checkButton" onclick="checkAnswer()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Check</button>
-    <button id="nextButton" onclick="nextQuestion()" style="display: none; padding: 10px; font-size: 18px; margin-left: 10px;">Next</button>
-    <button id="hintButton" onclick="showHint()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Hint</button>
-    <button id="replayButton" onclick="replaySentence()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Replay</button>
-    <p id="message" style="font-size: 18px; font-weight: bold;"></p>
+  <h2>🎤 English Quiz with Text-to-Speech</h2>
+  <p id="sentence" style="font-size: 20px;"></p>
+  <p id="noteDisplay" style="font-size: 16px; color: #555;"></p>
+  <input type="text" id="answer" placeholder="Type the missing word..." autocorrect="off" spellcheck="false" style="padding: 10px; font-size: 18px;">
+  <button id="checkButton" onclick="checkAnswer()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Check</button>
+  <button id="nextButton" onclick="nextQuestion()" style="display: none; padding: 10px; font-size: 18px; margin-left: 10px;">Next</button>
+  <button id="replayButton" onclick="replaySentence()" style="padding: 10px; font-size: 18px; margin-left: 10px;">Replay</button>
+  <button id="addNoteButton" onclick="addNote()" style="display: none; padding: 10px; font-size: 18px; margin-left: 10px;">Add Personal Note</button>
+  <p id="message" style="font-size: 18px; font-weight: bold;"></p>
+  <button id="addNewSentenceButton" onclick="addNewSentence()" style="padding: 10px; font-size: 18px; margin-top: 20px;">Add New Sentence</button>
+  <button id="reviewAllButton" style="display: none; padding: 10px; font-size: 18px; margin-top: 20px;" onclick="startQuiz(quizData)">Review All Words</button>
+  <button id="reviewIncorrectButton" style="display: none; padding: 10px; font-size: 18px; margin-top: 20px;" onclick="reviewIncorrect()">Review Incorrect Words</button>
+  <br><br>
+  <button id="resumeButton" onclick="startQuiz(null, true)" style="display: none; padding: 10px; font-size: 18px; margin-top: 20px;">Resume Quiz</button>
+  <button id="startNewButton" onclick="startQuiz(quizData)" style="display: none; padding: 10px; font-size: 18px; margin-top: 20px;">Start New Quiz</button>
 </body>
 </html>
