@@ -4,171 +4,195 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>English Quiz with TTS</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
     .controls { margin: 20px 0; }
-    button, input, select { padding: 10px; margin: 5px; font-size: 16px; }
-    #sentence { font-size: 20px; margin: 20px; }
-    #message { font-weight: bold; margin: 15px; }
+    button, input, select { padding: 8px 12px; margin: 5px; }
+    #sentence { font-size: 1.2em; margin: 20px 0; }
+    #message { font-weight: bold; margin: 15px 0; }
+    .add-form { background: #f5f5f5; padding: 15px; margin: 20px 0; }
   </style>
 </head>
 <body>
-  <h2>🎤 English Quiz with TTS</h2>
-  <select id="voiceSelect" onchange="setVoice()"></select>
-  <p id="sentence"></p>
-  <p id="noteDisplay"></p>
+  <h2>🎤 Interactive English Quiz</h2>
+  <select id="voiceSelect"></select>
+
+  <div id="quizSection">
+    <p id="sentence"></p>
+    <p id="noteDisplay"></p>
+    <input type="text" id="answer" placeholder="Type missing word...">
+    <div class="controls">
+      <button onclick="checkAnswer()">Check</button>
+      <button onclick="nextQuestion()" style="display:none">Next</button>
+      <button onclick="replaySentence()">Replay</button>
+    </div>
+    <p id="message"></p>
+  </div>
+
+  <div class="add-form">
+    <h3>Add New Sentence</h3>
+    <input type="text" id="newSentence" placeholder="Full sentence" style="width: 100%">
+    <input type="text" id="hiddenWord" placeholder="Word to hide">
+    <button onclick="addNewSentence()">Add Sentence</button>
+  </div>
+
+  <div class="controls">
+    <button onclick="startQuiz()">Start New Quiz</button>
+    <button onclick="reviewMistakes()" style="display:none">Review Mistakes</button>
+  </div>
+
+<script>
+// Initial sample sentences
+let sentences = [
+  {
+    sentence: "The ____ is shining brightly today.", 
+    fullSentence: "The sun is shining brightly today.",
+    hiddenWord: "sun",
+    note: ""
+  },
+  {
+    sentence: "She ____ to the store yesterday.",
+    fullSentence: "She went to the store yesterday.",
+    hiddenWord: "went",
+    note: ""
+  }
+];
+
+let currentQuiz = [];
+let mistakes = [];
+let currentIndex = 0;
+let score = 0;
+let selectedVoice = null;
+
+function startQuiz() {
+  currentQuiz = [...sentences];
+  mistakes = [];
+  currentIndex = 0;
+  score = 0;
+  document.querySelector("#reviewMistakes").style.display = "none";
+  loadQuestion();
+}
+
+function loadQuestion() {
+  if (currentIndex >= currentQuiz.length) return showResults();
   
-  <div class="controls">
-    <input type="text" id="answer" placeholder="Type missing word..." autocorrect="off" spellcheck="false">
-    <button id="checkButton" onclick="checkAnswer()">Check</button>
-    <button id="nextButton" onclick="nextQuestion()" style="display:none">Next</button>
-    <button id="replayButton" onclick="replaySentence()">Replay</button>
-    <button id="addNoteButton" onclick="addNote()" style="display:none">Add Note</button>
-  </div>
+  const current = currentQuiz[currentIndex];
+  document.getElementById("sentence").textContent = current.sentence;
+  document.getElementById("noteDisplay").textContent = current.note || "";
+  speakText(current.fullSentence);
+  document.getElementById("answer").value = "";
+  document.getElementById("message").textContent = "";
+  toggleButtons(true);
+}
 
-  <p id="message"></p>
+function checkAnswer() {
+  const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+  const correctAnswer = currentQuiz[currentIndex].hiddenWord.toLowerCase();
 
-  <div class="controls">
-    <button id="addNewSentenceButton" onclick="addNewSentence()">Add Sentence</button>
-    <button id="reviewAllButton" style="display:none" onclick="startQuiz(quizData)">Review All</button>
-    <button id="reviewIncorrectButton" style="display:none" onclick="reviewIncorrect()">Review Mistakes</button>
-    <button id="resumeButton" style="display:none" onclick="startQuiz(null, true)">Resume</button>
-    <button id="startNewButton" style="display:none" onclick="startQuiz(quizData)">New Quiz</button>
-  </div>
+  if (!userAnswer) {
+    showMessage("Please enter an answer!", "red");
+    return;
+  }
 
-  <script>
-    let quizData = [], currentQuizData = [], incorrectAnswers = [];
-    let currentIndex = 0, score = 0, selectedVoice = null;
-    const sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1DPv_Q__Hb2U88mhK8iDig8LORKH_kU_T/export?format=csv&gid=172221852';
+  if (userAnswer === correctAnswer) {
+    score++;
+    showMessage(`✅ Correct! (${score}/${currentIndex + 1})`, "green");
+  } else {
+    mistakes.push(currentQuiz[currentIndex]);
+    showMessage(`❌ Incorrect! Correct answer: ${correctAnswer}`, "red");
+  }
+  toggleButtons(false);
+  currentIndex++;
+}
 
-    function loadSentencesFromSheet(callback) {
-      Papa.parse(sheetCSVUrl, {
-        download: true,
-        header: true,
-        complete: (results) => {
-          const data = results.data.filter(row => row.word && row.example).map(row => ({
-            word: row.word.trim(),
-            fullSentence: row.example.trim(),
-            note: row.note?.trim() || "",
-            sentence: row.example.replace(new RegExp("\\b" + row.word.trim() + "\\b", "gi"), "____"),
-            hiddenWords: [row.word.trim().toLowerCase()]
-          }));
-          callback(data);
-        },
-        error: (err) => console.error("CSV Error:", err)
-      });
-    }
+function toggleButtons(showCheck) {
+  document.querySelector("button[onclick='checkAnswer()']").style.display = 
+    showCheck ? "inline-block" : "none";
+  document.querySelector("button[onclick='nextQuestion()']").style.display = 
+    showCheck ? "none" : "inline-block";
+}
 
-    function manageProgress(action = 'load') {
-      if (action === 'save') {
-        localStorage.setItem("quizProgress", JSON.stringify({
-          quizData, currentQuizData, incorrectAnswers, currentIndex, score
-        }));
-      } else {
-        const saved = localStorage.getItem("quizProgress");
-        return saved ? JSON.parse(saved) : null;
-      }
-    }
+function nextQuestion() {
+  loadQuestion();
+}
 
-    function startQuiz(data, resume = false) {
-      if (resume) {
-        const progress = manageProgress();
-        if (progress) Object.assign(this, progress);
-      } else {
-        currentQuizData = data?.map(item => ({...item})) || [];
-        currentIndex = score = 0;
-        incorrectAnswers = [];
-        manageProgress('save');
-      }
-      updateUI();
-      loadQuestion();
-    }
+function addNewSentence() {
+  const fullSentence = document.getElementById("newSentence").value.trim();
+  const hiddenWord = document.getElementById("hiddenWord").value.trim();
+  
+  if (!fullSentence || !hiddenWord) {
+    alert("Please fill both fields!");
+    return;
+  }
 
-    function updateUI(show = ['answer', 'checkButton', 'replayButton']) {
-      const elements = ['reviewAllButton', 'reviewIncorrectButton', 'resumeButton', 
-        'startNewButton', 'answer', 'checkButton', 'nextButton', 'replayButton', 'addNoteButton'];
-      elements.forEach(id => document.getElementById(id).style.display = 
-        show.includes(id) ? 'inline' : 'none');
-    }
+  const newSentence = {
+    sentence: fullSentence.replace(new RegExp(`\\b${hiddenWord}\\b`, "i"), "____"),
+    fullSentence: fullSentence,
+    hiddenWord: hiddenWord.toLowerCase(),
+    note: ""
+  };
 
-    function loadQuestion() {
-      if (currentIndex >= currentQuizData.length) return displaySummary();
-      
-      const current = currentQuizData[currentIndex];
-      document.getElementById("sentence").textContent = current.sentence;
-      document.getElementById("noteDisplay").textContent = current.note ? `Note: ${current.note}` : "";
-      speakText(current.fullSentence + (current.note ? ` Note: ${current.note}` : ""));
-      document.getElementById("answer").value = "";
-      document.getElementById("message").textContent = "";
-      manageProgress('save');
-    }
+  sentences.push(newSentence);
+  saveSentences();
+  document.getElementById("newSentence").value = "";
+  document.getElementById("hiddenWord").value = "";
+  showMessage("Sentence added successfully!", "green");
+}
 
-    function checkAnswer() {
-      const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
-      const current = currentQuizData[currentIndex];
-      
-      if (!userAnswer) {
-        displayMessage("Please enter a word!", "red");
-        return;
-      }
+function reviewMistakes() {
+  if (mistakes.length === 0) return;
+  currentQuiz = [...mistakes];
+  mistakes = [];
+  currentIndex = 0;
+  score = 0;
+  loadQuestion();
+}
 
-      if (userAnswer === current.hiddenWords[0]) {
-        score++;
-        displayMessage(`✅ Correct! Score: ${score}/${currentIndex + 1}`, "green");
-      } else {
-        incorrectAnswers.push(current);
-        displayMessage(`❌ Incorrect! Correct: ${current.hiddenWords[0]}`, "red");
-      }
-      updateUI(['answer', 'nextButton', 'replayButton', 'addNoteButton']);
-    }
+function showResults() {
+  document.getElementById("sentence").innerHTML = `
+    <h3>Quiz Complete!</h3>
+    <p>Score: ${score}/${currentQuiz.length}</p>
+    ${mistakes.length > 0 ? '<button onclick="reviewMistakes()">Review Mistakes</button>' : ''}
+  `;
+  document.getElementById("answer").style.display = "none";
+  toggleButtons(false);
+}
 
-    function displayMessage(text, color) {
-      const msg = document.getElementById("message");
-      msg.textContent = text;
-      msg.style.color = color;
-      speakText(text.replace(/[^a-zA-Z ]/g, ''));
-    }
+// TTS Functions
+function speakText(text) {
+  if (!window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = selectedVoice;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
 
-    function displaySummary() {
-      document.getElementById("sentence").textContent = 
-        `Quiz Complete! Score: ${score}/${currentQuizData.length}`;
-      updateUI(currentQuizData.length ? ['reviewAllButton'] : []);
-      if (incorrectAnswers.length) document.getElementById("reviewIncorrectButton").style.display = 'inline';
-    }
+function populateVoices() {
+  const voices = window.speechSynthesis.getVoices();
+  const select = document.getElementById("voiceSelect");
+  select.innerHTML = voices.map(v => 
+    `<option value="${v.name}">${v.name} (${v.lang})</option>`
+  ).join('');
+  selectedVoice = voices[0];
+}
 
-    function speakText(text) {
-      if (!window.speechSynthesis) return;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = selectedVoice;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
-    }
+// Local storage
+function saveSentences() {
+  localStorage.setItem("sentences", JSON.stringify(sentences));
+}
 
-    function populateVoices() {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      const select = document.getElementById("voiceSelect");
-      select.innerHTML = voices.map(v => 
-        `<option value="${v.name}">${v.name} (${v.lang})</option>`
-      ).join('');
-      selectedVoice = voices[0];
-    }
+// Initial setup
+window.onload = () => {
+  const saved = localStorage.getItem("sentences");
+  if (saved) sentences = JSON.parse(saved);
+  populateVoices();
+  speechSynthesis.onvoiceschanged = populateVoices;
+  startQuiz();
+};
 
-    window.onload = () => {
-      populateVoices();
-      speechSynthesis.onvoiceschanged = populateVoices;
-      
-      const progress = manageProgress();
-      if (progress?.currentIndex < progress?.currentQuizData.length) {
-        updateUI(['resumeButton', 'startNewButton']);
-      } else {
-        loadSentencesFromSheet(data => startQuiz(data));
-      }
-    };
-
-    document.addEventListener("keypress", e => {
-      if (e.key === "Enter" && document.getElementById("checkButton").style.display !== 'none') checkAnswer();
-    });
-  </script>
+document.addEventListener("keypress", e => {
+  if (e.key === "Enter") document.querySelector("button[onclick='checkAnswer()']")?.click();
+});
+</script>
 </body>
 </html>
