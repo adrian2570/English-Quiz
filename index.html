@@ -1,4 +1,283 @@
-<div class="container">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Completion Quiz</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        #sentence-input-card {
+            margin-bottom: 30px; /* More margin below sentence input card */
+        }
+
+        #sentence-input-card h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center; /* Center the title */
+        }
+
+        #sentence-input-card .form-group {
+            margin-bottom: 15px;
+        }
+
+        #sentence-input-card label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555; /* Slightly darker label text */
+        }
+
+        #sentence-input-card textarea,
+        #sentence-input-card input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 10px; /* Add margin below input fields */
+        }
+
+        #sentence-input-card textarea {
+            min-height: 120px; /* Slightly taller textarea */
+        }
+
+        #sentence-input-card button {
+            background-color: #5cb85c; /* Green add button */
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: block; /* Make button full width */
+            width: 100%;
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        #sentence-input-card button:hover {
+            background-color: #4cae4c;
+        }
+
+
+        #progress {
+            background-color: #e0e8e5;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            height: 10px;
+            background-color: #29a9ff;
+            width: 0%; /* Updated to percentage */
+            border-radius: 10px;
+            transition: width 0.4s ease; /* Smooth progress bar animation */
+        }
+
+
+        #sentence {
+            font-size: 22px;
+            margin-bottom: 15px;
+            line-height: 1.6; /* Improve sentence readability */
+            color: #333;
+            text-align: center; /* Center sentence text */
+        }
+
+        #sentence.loading::after {
+            content: '...Loading'; /* Loading text for sentence area */
+            animation: dots 1s steps(3, end) infinite;
+        }
+
+        #sentence.error {
+            color: #d9534f; /* Error text color */
+        }
+
+        @keyframes dots {
+            0%, 100% { content: '...Loading'; }
+            33%  { content: 'Loading...'; }
+            66% { content: '..Loading.'; }
+        }
+
+
+        #answer {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 18px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        #answer:focus {
+            outline: none;
+            border-color: #29a9ff;
+            box-shadow: 0 0 5px rgba(41, 169, 255, 0.5);
+        }
+
+
+        #message {
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center; /* Center message text */
+            min-height: 24px; /* Ensure message area maintains height */
+        }
+
+        .message.correct {
+            color: #5cb85c;
+            animation: feedback 1.5s ease-out forwards;
+        }
+
+        .message.incorrect {
+            color: #d9534f;
+            animation: feedback 1.5s ease-out forwards;
+        }
+
+        .message.help-hint {
+            color: #f0ad4e; /* Orange color for hints */
+        }
+
+
+        @keyframes feedback {
+            0% { opacity: 0; transform: translateY(-10px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+
+
+        .button-group {
+            display: flex;
+            justify-content: space-around; /* Distribute buttons evenly */
+            gap: 10px; /* Space between buttons */
+            margin-bottom: 20px;
+        }
+
+
+        .button-group button {
+            background-color: #007bff; /* Primary button color */
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-group button:hover {
+            background-color: #0056b3;
+        }
+
+        .button-group button#helpButton {
+            background-color: #f0ad4e; /* Help button color - orange */
+        }
+
+        .button-group button#helpButton:hover {
+            background-color: #ea9b39;
+        }
+
+        .button-group button#audioToggle {
+            background-color: #6c757d; /* Audio toggle color - grey */
+        }
+
+        .button-group button#audioToggle:hover {
+            background-color: #5a6268;
+        }
+
+
+        #voiceSettings {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee; /* Light border to separate settings */
+        }
+
+        #voiceSettings label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        #voiceSelect, #rateControl, #pitchControl {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 15px; /* Space below settings elements */
+        }
+
+
+        #highScoreDisplay, #quizCountDisplay {
+            text-align: center;
+            font-size: 16px;
+            color: #777;
+            margin-bottom: 10px;
+        }
+
+
+        .no-animation * {
+            animation: none !important;
+            transition: none !important;
+        }
+
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            #sentence {
+                font-size: 20px;
+            }
+
+            #answer {
+                font-size: 16px;
+            }
+
+            .button-group button {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body class="">
+    <div class="container">
         <div class="card" id="sentence-input-card">
             <h3>Add Your Own Sentences</h3>
             <div class="form-group">
@@ -43,37 +322,9 @@
             <div id="quizCountDisplay"></div>
         </div>
     </div>
-    #sentence-input-card .form-group { /* Style form groups within the input card */
-        margin-bottom: 15px;
-    }
 
-    #sentence-input-card label { /* Style labels within the input card */
-        display: block; /* Make labels appear on their own line */
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-
-    #sentence-input-card textarea,
-    #sentence-input-card input[type="text"] { /* Style textarea and text inputs within input card */
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-sizing: border-box; /* Include padding in width calculation */
-        font-size: 16px;
-        font-family: inherit; /* Inherit font from body for consistency */
-    }
-
-    #sentence-input-card textarea { /* Slightly adjust textarea height */
-        min-height: 100px; /* Make textarea a bit taller */
-    }
-    <head>
-    <title>Your Quiz Title</title>
-    <style>
-        /* Paste the CSS code from Part 2 here */
-    </style>
-</head>
-let quizData = []; // Will hold the quiz questions
+    <script>
+    let quizData = []; // Will hold the quiz questions
     let currentIndex = 0;
     let score = 0;
     let synth = window.speechSynthesis;
@@ -499,9 +750,6 @@ let quizData = []; // Will hold the quiz questions
     elements.answer.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') checkAnswer();
     });
-        </div>
-
-    <script>
-        /* Paste the JavaScript code from Part 3 here */
     </script>
 </body>
+</html>
