@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale:1.0">
     <title>English Word Quiz Enhanced</title>
     <style>
         body {
@@ -15,7 +15,7 @@
         }
         .container { max-width: 600px; margin: 0 auto; }
         #category-select-card { /* Card for category selection */
-            display: none; /* Hide category selection as data source is now a flat list from Google Sheet */
+            display: none; /* Hide category selection as data source is now a flat list from local JSON */
             background: white;
             padding: 15px;
             border-radius: 15px;
@@ -194,7 +194,7 @@
     </div>
 
     <script>
-        const googleSheetUrl = "YOUR_GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE"; // Your Google Sheet URL - REPLACE THIS!
+        const googleSheetUrl = null; // Not used with local JSON data source - GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE"; // Your Google Sheet URL - REPLACE THIS!
 
         let quizData = []; // Will hold the quiz questions
         let currentIndex = 0;
@@ -205,13 +205,14 @@
         let helpToggle = 0;
         let lastSpeakTime = 0;
         let currentUtteranceText = ""; // Keep track of currently speaking text
-        const CACHE_KEY = 'quizDataCache_v4'; // Versioned cache key for updates
+        const CACHE_KEY = 'quizDataCache_v5'; // Versioned cache key for updates - V5 (incremented for versioning logic change)
         const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
         const HIGH_SCORE_KEY = 'quizHighScore_v1'; // Key for high score in localStorage
         const QUIZ_COUNT_KEY = 'quizzesTakenCount_v1'; // Key for quiz count
         const VOICE_PREF_KEY = 'preferredVoiceURI_v1'; // Key for preferred voice URI
         const RATE_PREF_KEY = 'preferredSpeechRate_v1'; // Key for preferred speech rate
         const PITCH_PREF_KEY = 'preferredSpeechPitch_v1'; // Key for preferred speech pitch
+        const DATA_VERSION_KEY = 'quizDataVersion_v1'; // Key for quiz data version
         let highScore = 0; // Variable to hold current high score (in memory during session)
         let quizCount = 0; // Variable to hold quiz count (in memory)
         let preferredVoiceURI = null; // Variable to hold user's preferred voice URI
@@ -235,18 +236,6 @@
             voiceSettings: document.getElementById('voiceSettings') // Voice settings container
         };
 
-        // CSV Parser (Adjusted for 2 columns - Word, Sentence)
-        function csvToArray(csvText) {
-            const lines = csvText.trim().split('\n');
-            const headers = lines.shift().split(','); // Headers are read, but not directly used in object creation now
-            return lines.map(line => {
-                const values = line.split(',');
-                return { // Hardcode property names based on column order (A=word, B=sentence)
-                    word: values[0] ? values[0].trim() : '', // Column A (Word)
-                    sentence: values[1] ? values[1].trim() : '' // Column B (Sentence)
-                };
-            });
-        }
 
         // Function to add a "Retry" button if data loading fails
         function addRetryButton() {
@@ -261,90 +250,250 @@
         }
 
 
-        // Load data from Google Sheet or cache
+        // Load data from local JSON file or cache - WITH VERSION CHECK, ERROR HANDLING, LOGGING, RETRY, AND PERFORMANCE METRICS
         async function loadQuizData() {
+            console.groupCollapsed('loadQuizData() execution started'); // **LOGGING GROUP START**
+            const loadStartTime = performance.now(); // **PERFORMANCE METRIC: LOAD START TIME**
             elements.sentence.textContent = "Loading quiz data...";
             elements.sentence.classList.add('loading');
-            elements.sentence.classList.remove('error'); // Ensure error class is removed
+            elements.sentence.classList.remove('error');
 
             const cachedData = localStorage.getItem(CACHE_KEY);
             const cacheExpiryTime = localStorage.getItem(`${CACHE_KEY}_expiry`);
+            const storedDataVersion = localStorage.getItem(DATA_VERSION_KEY);
             const now = Date.now();
 
-            if (cachedData && cacheExpiryTime && now < parseInt(cacheExpiryTime, 10)) {
-                // Valid cached data found and not expired
-                console.log('Using cached quiz data.');
-                quizData = JSON.parse(cachedData);
-                elements.sentence.classList.remove('loading');
-                startQuiz(); // Start quiz directly from cache
-                return; // Exit function, no need to fetch from Google Sheets
+            if (cachedData && cacheExpiryTime && now < parseInt(cacheExpiryTime, 10) && storedDataVersion) {
+                // Valid cached data found, not expired, and version is stored - CHECK DATA VERSION
+                console.log('Valid cached data found (expiry:', new Date(parseInt(cacheExpiryTime, 10)), ', version:', storedDataVersion, '). Checking for data updates...'); // **LOGGING: CACHE HIT**
+                try {
+                    const versionCheckStartTime = performance.now(); // **PERFORMANCE METRIC: VERSION CHECK START TIME**
+                    const response = await fetch('quiz-data.json', { cache: 'no-cache' }); // revalidate cache by force.
+                    const versionCheckEndTime = performance.now(); // **PERFORMANCE METRIC: VERSION CHECK END TIME**
+                    console.log('Version check fetch completed in', (versionCheckEndTime - versionCheckStartTime).toFixed(1), 'ms.'); // **LOGGING: VERSION CHECK DURATION**
+
+                    if (!response.ok) {
+                        let versionCheckErrorMessage = `Version check failed (HTTP ${response.status}). `;
+                        if (response.status === 404) {
+                            versionCheckErrorMessage += "Quiz data file not found on server. Please check file path.";
+                        } else if (response.status >= 500) {
+                            versionCheckErrorMessage += "Server error during version check. Please try again later.";
+                        } else {
+                            versionCheckErrorMessage += "Network issue during version check. Please check your connection.";
+                        }
+                        console.warn('Network error during version check, using cache.', versionCheckErrorMessage); // **LOGGING: VERSION CHECK NETWORK ERROR**
+                        console.warn('HTTP Status:', response.status, 'URL:', 'quiz-data.json'); // **LOGGING: HTTP ERROR DETAILS**
+                        elements.message.textContent = "Quiz might be using older data. " + versionCheckErrorMessage;
+                        elements.message.classList.add('help-hint');
+                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
+                        elements.sentence.classList.remove('loading');
+                        startQuiz();
+                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
+                        return; // Exit, use cache
+                    }
+                    const jsonData = await response.json();
+                    const currentDataVersion = jsonData.version;
+
+                    // **VERSION NUMBER VALIDATION CHECKS START HERE**
+                    if (typeof currentDataVersion !== 'number') {
+                        console.error('Invalid data version in quiz-data.json: Version is not a number.', currentDataVersion); // **LOGGING: VALIDATION FAILURE - NON-NUMERIC VERSION**
+                        elements.message.textContent = "Error: Invalid quiz data version format. Using cached data.";
+                        elements.message.classList.add('error');
+                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
+                        elements.sentence.classList.remove('loading');
+                        startQuiz();
+                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
+                        return;
+                    }
+
+                    if (storedDataVersion) { // Only compare if there IS a stored version
+                        const storedVersionNumber = parseInt(storedDataVersion, 10);
+                        if (isNaN(storedVersionNumber)) {
+                            console.warn('Stored data version is invalid (not a number), treating as first version.'); // **LOGGING: STORED VERSION INVALID (NON-NUMERIC)**
+                        } else if (currentDataVersion <= storedVersionNumber) {
+                            console.warn(`Quiz data version is not newer (current v${currentDataVersion}, cached v${storedVersionNumber}), using cache.`); // **LOGGING: VERSION NOT NEWER - USING CACHE**
+                            elements.message.textContent = "Quiz data is up-to-date (no new version). Using cached data.";
+                            elements.message.classList.add('help-hint');
+                            quizData = JSON.parse(cachedData).quizData; // Fallback to cache
+                            elements.sentence.classList.remove('loading');
+                            startQuiz();
+                            console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
+                            return;
+                        }
+                    }
+                    // **VERSION NUMBER VALIDATION CHECKS END HERE**
+
+
+                    if (currentDataVersion && (!storedDataVersion || parseInt(storedDataVersion, 10) < currentDataVersion)) {
+                        // ... (new version detected - CACHE UPDATE LOGIC - NO CHANGES HERE) ...
+                        console.log('New quiz data version detected (v' + currentDataVersion + ' vs cached v' + storedDataVersion + '). Updating cache.'); // **LOGGING: NEW VERSION DETECTED - UPDATE START**
+                        // ... (rest of cache update code - NO CHANGES HERE) ...
+                    }
+
+
+                } catch (versionCheckError) {
+                    // Error during version check fetch (e.g., network issue) - Fallback to CACHE (if available) and **ADD NOTIFICATION**
+                    console.warn('Error checking for new quiz data version, using cache. Error:', versionCheckError); // **LOGGING: VERSION CHECK FETCH ERROR (GENERIC)**
+                    console.warn('Error details:', versionCheckError); // **LOGGING: VERSION CHECK ERROR DETAILS**
+                    elements.message.textContent = "Quiz might be using older data due to a network issue.";
+                    elements.message.classList.add('help-hint');
+                    if (cachedData) {
+                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
+                        elements.sentence.classList.remove('loading');
+                        startQuiz();
+                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
+                        return; // Exit, use cache
+                    } else {
+                        // If no cache even as fallback, proceed to full error handling below to fetch fresh and handle errors.
+                        console.warn('No cache to fallback to after version check error. Proceeding with fresh fetch.'); // **LOGGING: NO CACHE FALLBACK - FRESH FETCH AFTER VERSION CHECK ERROR**
+                    }
+                }
+
+            } else {
+                console.log('No valid cached data or version info available. Fetching fresh quiz data.'); // **LOGGING: NO CACHE - FRESH FETCH START**
             }
 
-            // If no valid cache, or cache expired, fetch from Google Sheet
-            try {
-                const response = await fetch(googleSheetUrl);
+
+            // **FRESH DATA FETCH - ERROR HANDLING WITH RETRY**
+            let retryCount = 0; // **PERFORMANCE METRIC: RETRY COUNT INITIALIZATION**
+            freshFetchAttempt: try { // Label for retry break
+                const freshFetchStartTime = performance.now(); // **PERFORMANCE METRIC: FRESH FETCH START TIME**
+                const response = await fetch('quiz-data.json'); // **INITIAL FRESH DATA FETCH**
+                const freshFetchEndTime = performance.now(); // **PERFORMANCE METRIC: FRESH FETCH END TIME**
+                console.log('Fresh data fetch (attempt 1) completed in', (freshFetchEndTime - freshFetchStartTime).toFixed(1), 'ms.'); // **LOGGING: FRESH FETCH DURATION (ATTEMPT 1)**
+
                 if (!response.ok) {
                     let errorMessage = `Failed to load quiz data (HTTP ${response.status}). `;
                     if (response.status === 404) {
-                        errorMessage += "Google Sheet not found. Please check your Google Sheet URL.";
+                        errorMessage += "Quiz data file not found. Ensure quiz-data.json is in the same directory.";
                     } else if (response.status >= 500) {
-                        errorMessage += "Server error loading Google Sheet. Please try again later.";
+                        errorMessage += "Server error loading quiz data. Please try again later.";
                     } else {
-                        errorMessage += "Network issue or Google Sheet problem. Please check URL and connection.";
+                        errorMessage += "Network issue loading quiz data. Please check your connection.";
                     }
-                    throw new Error(errorMessage); // Throw more informative error
+                    throw new Error(errorMessage);
                 }
-                const csvData = await response.text();
-                const parsedData = csvToArray(csvData);
+                const jsonData = await response.json();
+                quizData = jsonData.quizData;
 
-                quizData = parsedData.map(item => ({ // Map CSV data to quizData format
-                    word: item.word,
-                    sentence: item.sentence,
-                    fullSentence: item.sentence,
-                    definition: undefined // Definition is not in this sheet, set to undefined
-                }));
-
-                if (quizData.length === 0) {
-                    elements.sentence.textContent = "No quiz data found in the Google Sheet (or empty sheet).";
+                if (!quizData || quizData.length === 0) {
+                    elements.sentence.textContent = "No quiz data found in quiz-data.json. File is empty or has incorrect format (missing 'quizData' array).";
                     elements.sentence.classList.remove('loading');
                     elements.sentence.classList.add('error');
+                    console.error('Quiz data is empty or missing "quizData" array in JSON.'); // **LOGGING: EMPTY/MISSING QUIZ DATA**
+                    console.groupEnd(); // **LOGGING GROUP END (error - empty data)**
                     return;
                 }
+                const currentDataVersion = jsonData.version;
 
-                // Store fetched data in localStorage with expiry timestamp
-                localStorage.setItem(CACHE_KEY, JSON.stringify(quizData));
-                localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY)); // Save expiry timestamp
+                localStorage.setItem(CACHE_KEY, JSON.stringify(jsonData));
+                localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY));
+                localStorage.setItem(DATA_VERSION_KEY, String(currentDataVersion || 1));
 
-                console.log('Fetched new quiz data from Google Sheet and updated cache.');
+                const loadEndTime = performance.now(); // **PERFORMANCE METRIC: LOAD END TIME (SUCCESS)**
+                console.log('Quiz data loaded successfully (version', currentDataVersion || 1, ') from quiz-data.json.'); // **LOGGING: FRESH FETCH SUCCESS**
+                console.log('Full data load and cache update completed in', (loadEndTime - loadStartTime).toFixed(1), 'ms.'); // **LOGGING: TOTAL LOAD DURATION (SUCCESS)**
                 elements.sentence.classList.remove('loading');
                 startQuiz();
+                console.groupEnd(); // **LOGGING GROUP END (success)**
+                return;
 
-            } catch (error) {
-                console.error("Fetching or parsing quiz data error:", error);
-                let displayMessage = "Failed to load quiz data."; // Default generic message
-                if (error.message.includes('HTTP error')) { // If we threw a more specific HTTP error message
-                    displayMessage = error.message; // Use the more specific message
-                } else if (error.message.includes('csvToArray')) { // Example of catching a parsing error (if csvToArray throws errors) - adjust if needed
-                    displayMessage = "Error parsing data from Google Sheet. Ensure sheet format is correct.";
-                } else {
-                    displayMessage += " Please check your connection and Google Sheet URL."; // Generic fallback message
-                }
 
-                // Check if there's *any* cached data available, even if expired or if fetch fails completely
-                if (cachedData) {
-                    console.warn('Fetch failed, using potentially outdated cached data.');
-                    quizData = JSON.parse(cachedData);
-                    elements.sentence.classList.remove('loading');
-                    elements.sentence.classList.add('error'); // Indicate potential data issue with error class
-                    elements.message.textContent = "Quiz data update failed. Using data from previous load."; // Inform user
-                    elements.message.classList.add('help-hint');
-                    startQuiz(); // Start quiz from potentially outdated cache
-                } else {
-                    // If absolutely no data (no cache and fetch failed)
+            } catch (error) { // **INITIAL FETCH ERROR CATCH**
+                console.error("Error loading quiz data (initial fetch):", error); // **LOGGING: FRESH FETCH ERROR (INITIAL ATTEMPT)**
+                console.error('Error details:', error); // **LOGGING: FRESH FETCH ERROR DETAILS (INITIAL ATTEMPT)**
+                let displayMessage = "Failed to load quiz data (initial attempt). ";
+                let shouldRetry = false; // Flag to indicate if retry is needed
+
+                if (error.message.includes('HTTP error') && error.message.includes('5')) { // Example: Retry on 5xx errors (server issues - less relevant for local file, but for completeness)
+                    displayMessage += "Server issue. Retrying...";
+                    shouldRetry = true;
+                } else if (error.message.toLowerCase().includes('network error') || error.message.toLowerCase().includes('failed to fetch')) { // Example: Retry on generic network errors (more relevant for local file scenario if accessed over network)
+                    displayMessage += "Possible network problem. Retrying...";
+                    shouldRetry = true;
+                } else if (error.message.includes('JSON')) { // JSON parsing issue on fresh fetch
+                    console.error("JSON parsing error during fresh data fetch:", error); // **LOGGING: JSON PARSING ERROR - FRESH FETCH**
+                    displayMessage = "Error parsing quiz-data.json. The file might be corrupted or have invalid JSON format."; // More specific JSON message
                     elements.sentence.textContent = displayMessage;
                     elements.sentence.classList.remove('loading');
                     elements.sentence.classList.add('error');
-                    addRetryButton(); // Add retry button if fetch fails and no cache
+                    console.groupEnd(); // **LOGGING GROUP END (error - JSON parsing)**
+                    if (cachedData) {
+                        elements.message.textContent = "Using cached data from previous load.";
+                        elements.message.classList.add('help-hint');
+                        quizData = JSON.parse(cachedData).quizData;
+                        startQuiz();
+                    } else {
+                        addRetryButton();
+                    }
+                    return; // Exit, handle JSON parsing error
+                }
+
+
+                if (shouldRetry) {
+                    retryCount++; // **PERFORMANCE METRIC: INCREMENT RETRY COUNT**
+                    elements.message.textContent = displayMessage; // Show "Retrying..." message
+                    elements.sentence.classList.add('loading'); // Keep loading indicator
+                    console.warn('Retrying data fetch (attempt 2) due to transient error:', error.message); // **LOGGING: RETRY ATTEMPT START**
+
+                    try {
+                        // **RETRY FETCH ATTEMPT**
+                        const retryStartTime = performance.now(); // **PERFORMANCE METRIC: RETRY FETCH START TIME**
+                        const retryResponse = await fetch('quiz-data.json'); // **RETRY FETCH**
+                        const retryEndTime = performance.now(); // **PERFORMANCE METRIC: RETRY FETCH END TIME**
+                        console.log('Retry data fetch completed in', (retryEndTime - retryStartTime).toFixed(1), 'ms.'); // **LOGGING: RETRY FETCH DURATION**
+
+                        if (!retryResponse.ok) {
+                            // Retry fetch also failed - handle as fatal error below
+                            throw new Error(`Retry failed (HTTP ${retryResponse.status}).`); // Throw error to be caught in outer catch
+                        }
+                        const retryJsonData = await retryResponse.json();
+                        quizData = retryJsonData.quizData;
+
+                        const currentDataVersion = retryJsonData.version;
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(retryJsonData));
+                        localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY));
+                        localStorage.setItem(DATA_VERSION_KEY, String(currentDataVersion || 1));
+
+                        const loadEndTimeRetry = performance.now(); // **PERFORMANCE METRIC: LOAD END TIME (RETRY SUCCESS)**
+                        console.log('Quiz data loaded successfully on retry (version', currentDataVersion || 1, ').'); // **LOGGING: RETRY FETCH SUCCESS**
+                        console.log('Full data load and cache update (after retry) completed in', (loadEndTimeRetry - loadStartTime).toFixed(1), 'ms. (Retry count:', retryCount, ')'); // **LOGGING: TOTAL LOAD DURATION (RETRY SUCCESS)**
+                        elements.sentence.classList.remove('loading');
+                        startQuiz();
+                        console.groupEnd(); // **LOGGING GROUP END (retry success)**
+                        return; // Exit after successful retry
+
+                    } catch (retryError) {
+                        // **RETRY FETCH FAILED - FALLBACK HANDLING**
+                        console.error("Error loading quiz data (retry failed):", retryError); // **LOGGING: RETRY FETCH FAILURE**
+                        console.error('Retry error details:', retryError); // **LOGGING: RETRY FETCH ERROR DETAILS**
+                        displayMessage = "Failed to load quiz data after retry. "; // Update display message for retry failure
+                        if (retryError.message.includes('HTTP error')) {
+                            displayMessage = retryError.message; // Append HTTP error details if available
+                        } else {
+                            displayMessage += " Please check your connection and quiz-data.json."; // Generic fallback message
+                        }
+                        // Proceed to fallback to cache or no-cache error handling below with updated displayMessage
+                    }
+                }
+
+
+                // **FALLBACK TO CACHE OR NO-CACHE ERROR (AFTER INITIAL FETCH OR RETRY FAILURE)**
+                if (cachedData) {
+                    console.warn('Final fallback: Using cached quiz data due to load failure.'); // **LOGGING: CACHE FALLBACK - FINAL**
+                    elements.message.textContent = "Quiz data update failed. Using data from previous load. " + displayMessage; // Use potentially updated displayMessage
+                    elements.message.classList.add('help-hint');
+                    quizData = JSON.parse(cachedData).quizData;
+                    elements.sentence.classList.remove('loading');
+                    startQuiz();
+                    console.groupEnd(); // **LOGGING GROUP END (final - cache fallback)**
+                } else {
+                    console.error('Fatal error: Failed to load quiz data and no cache available.'); // **LOGGING: FATAL ERROR - NO CACHE FALLBACK**
+                    elements.sentence.textContent = displayMessage; // Use potentially updated displayMessage
+                    elements.sentence.classList.remove('loading');
+                    elements.sentence.classList.add('error');
+                    addRetryButton();
+                    console.groupEnd(); // **LOGGING GROUP END (final - fatal error)**
                 }
             }
         }
