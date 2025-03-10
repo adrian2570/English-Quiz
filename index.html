@@ -1,171 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale:1.0">
-    <title>English Word Quiz Enhanced</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 15px;
-            background: #f8f9fa;
-            color: #333;
-            overscroll-behavior: none;
-        }
-        .container { max-width: 600px; margin: 0 auto; }
-        #category-select-card { /* Card for category selection */
-            display: none; /* Hide category selection as data source is now a flat list from local JSON */
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin: 20px 0;
-            text-align: center;
-        }
-        select { /* Category dropdown & Voice select dropdown */
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            font-size: 16px;
-            margin-top: 10px;
-            width: 100%; /* Make dropdowns full width in their container */
-            box-sizing: border-box; /* Ensure padding is included in width */
-            -webkit-appearance: auto; /* Reset to default appearance for consistent styling */
-            -moz-appearance: auto;
-            appearance: auto;
-            background-color: white; /* Ensure white background for dropdowns */
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            margin: 20px 0;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 6px 4px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            background: #1a73e8;
-            color: white;
-            font-weight: 500;
-            cursor: pointer;
-            touch-action: manipulation;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0e5cb8;
-        }
-        #progress {
-            height: 4px;
-            background: #e9ecef;
-            border-radius: 2px;
-            margin: 15px 0;
-        }
-        #progressBar {
-            height: 100%;
-            background: #1a73e8;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        #sentence { font-size: 1.2em; margin: 15px 0; }
-        #message { margin: 10px 0; font-weight: 500; transition: opacity 0.3s ease; opacity: 1; }
-        .correct { color: #34a853; }
-        .incorrect { color: #ea4335; }
-        .loading { color: #1a73e8; font-weight: 500; }
-        .error { color: #ea4335; font-weight: 500; }
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-        }
-        .feedback-animation { /* Animation for feedback messages */
-            animation: feedbackFade 1.5s forwards;
-            animation-timing-function: ease-out; /* Added easing for smoother fade */
-        }
-        /* Add a class to disable animation for lower performance devices (optional, could detect via JS too) */
-        .no-animation .feedback-animation {
-            animation: none !important; /* Disable animation if .no-animation class is present */
-            opacity: 0; /* Still make it fade out instantly if animation is disabled, to clear the message */
-            transition: opacity 0.5s ease-out; /* Fallback transition for opacity if no animation */
-        }
-        .help-hint { /* Style for hint messages */
-            color: #ffc107; /* Amber color for hints */
-            font-style: italic;
-        }
-        .definition { /* Style for word definition */
-            display: none; /* Hide definition display as definition is not in this data source */
-            font-size: 0.9em;
-            color: #777;
-            margin-top: 8px;
-            font-style: italic;
-        }
-        #highScoreDisplay, #quizCountDisplay {
-            margin-top: 10px;
-            font-weight: bold;
-            text-align: center; /* Center align score display */
-        }
-        #voiceSettings {
-            margin-top: 15px;
-        }
-
-        #voiceSettings label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        #voiceSelect, #rateControl, #pitchControl {
-            margin-bottom: 10px; /* Space between voice settings elements */
-        }
-
-
-        /* Example Media Query for Mobile - Adjust breakpoint and values as needed */
-        @media (max-width: 768px) { /* Example breakpoint for smaller screens (tablets and phones) */
-            #voiceSettings {
-                margin-top: 10px; /* Reduce top margin on smaller screens */
-            }
-
-            #voiceSettings label {
-                margin-bottom: 3px; /* Slightly reduce label bottom margin */
-                font-size: 0.95em; /* Slightly smaller font for labels on mobile if needed */
-            }
-
-            #voiceSelect, #rateControl, #pitchControl {
-                padding: 8px; /* Slightly reduce padding if needed */
-                font-size: 0.9em; /* Smaller font for controls if needed */
-            }
-
-            .button-group button { /* Ensure buttons are still tappable and spaced on mobile */
-                padding: 8px 16px; /* Adjust button padding if needed */
-                margin: 5px 3px;  /* Adjust button margins */
-            }
-        }
-
-
-    </style>
-</head>
-<body class="">
-    <div class="container">
-        <div id="category-select-card">
-            <label for="categorySelect">Choose a category:</label>
-            <select id="categorySelect" onchange="selectCategory()">
-                <option value="all">All Categories</option>
-            </select>
+<div class="container">
+        <div class="card" id="sentence-input-card">
+            <h3>Add Your Own Sentences</h3>
+            <div class="form-group">
+                <label for="newSentenceBlank">Sentence with blank (use ____ for missing word):</label>
+                <textarea id="newSentenceBlank" placeholder="e.g., The cat sat on the ____." aria-label="Sentence with blank input"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="newWord">Missing Word:</label>
+                <input type="text" id="newWord" placeholder="e.g., mat" aria-label="Missing word input">
+            </div>
+            <div class="form-group">
+                <label for="newFullSentence">Full Sentence (for audio - optional):</label>
+                <input type="text" id="newFullSentence" placeholder="e.g., The cat sat on the mat." aria-label="Full sentence for audio input">
+            </div>
+            <button id="addSentenceButton" onclick="addUserSentence()" aria-label="Add sentence to quiz">Add Sentence</button>
+            <div id="sentenceInputMessage" class="message" style="margin-top: 10px;"></div>
         </div>
+
         <div class="card">
             <div id="progress"><div id="progressBar"></div></div>
             <p id="sentence"></p>
@@ -192,593 +43,465 @@
             <div id="quizCountDisplay"></div>
         </div>
     </div>
+    #sentence-input-card .form-group { /* Style form groups within the input card */
+        margin-bottom: 15px;
+    }
 
-    <script>
-        const googleSheetUrl = null; // Not used with local JSON data source - GOOGLE_SHEET_PUBLISHED_CSV_URL_HERE"; // Your Google Sheet URL - REPLACE THIS!
+    #sentence-input-card label { /* Style labels within the input card */
+        display: block; /* Make labels appear on their own line */
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
 
-        let quizData = []; // Will hold the quiz questions
-        let currentIndex = 0;
-        let score = 0;
-        let synth = window.speechSynthesis;
-        let googleVoice = null;
-        let isMuted = false;
-        let helpToggle = 0;
-        let lastSpeakTime = 0;
-        let currentUtteranceText = ""; // Keep track of currently speaking text
-        const CACHE_KEY = 'quizDataCache_v5'; // Versioned cache key for updates - V5 (incremented for versioning logic change)
-        const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
-        const HIGH_SCORE_KEY = 'quizHighScore_v1'; // Key for high score in localStorage
-        const QUIZ_COUNT_KEY = 'quizzesTakenCount_v1'; // Key for quiz count
-        const VOICE_PREF_KEY = 'preferredVoiceURI_v1'; // Key for preferred voice URI
-        const RATE_PREF_KEY = 'preferredSpeechRate_v1'; // Key for preferred speech rate
-        const PITCH_PREF_KEY = 'preferredSpeechPitch_v1'; // Key for preferred speech pitch
-        const DATA_VERSION_KEY = 'quizDataVersion_v1'; // Key for quiz data version
-        let highScore = 0; // Variable to hold current high score (in memory during session)
-        let quizCount = 0; // Variable to hold quiz count (in memory)
-        let preferredVoiceURI = null; // Variable to hold user's preferred voice URI
-        let preferredRate = 0.9;    // Default rate
-        let preferredPitch = 1.0;   // Default pitch
+    #sentence-input-card textarea,
+    #sentence-input-card input[type="text"] { /* Style textarea and text inputs within input card */
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-sizing: border-box; /* Include padding in width calculation */
+        font-size: 16px;
+        font-family: inherit; /* Inherit font from body for consistency */
+    }
+
+    #sentence-input-card textarea { /* Slightly adjust textarea height */
+        min-height: 100px; /* Make textarea a bit taller */
+    }
+    <head>
+    <title>Your Quiz Title</title>
+    <style>
+        /* Paste the CSS code from Part 2 here */
+    </style>
+</head>
+let quizData = []; // Will hold the quiz questions
+    let currentIndex = 0;
+    let score = 0;
+    let synth = window.speechSynthesis;
+    let googleVoice = null;
+    let isMuted = false;
+    let helpToggle = 0;
+    let lastSpeakTime = 0;
+    let currentUtteranceText = "";
+    const CACHE_KEY = 'quizDataCache_v5';
+    const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+    const HIGH_SCORE_KEY = 'quizHighScore_v1';
+    const QUIZ_COUNT_KEY = 'quizzesTakenCount_v1';
+    const VOICE_PREF_KEY = 'preferredVoiceURI_v1';
+    const RATE_PREF_KEY = 'preferredSpeechRate_v1';
+    const PITCH_PREF_KEY = 'preferredSpeechPitch_v1';
+    const DATA_VERSION_KEY = 'quizDataVersion_v1';
+    const USER_QUIZ_DATA_KEY = 'userQuizData_v1';
+    let highScore = 0;
+    let quizCount = 0;
+    let preferredVoiceURI = null;
+    let preferredRate = 0.9;
+    let preferredPitch = 1.0;
+
+    const elements = {
+        sentence: document.getElementById('sentence'),
+        answer: document.getElementById('answer'),
+        message: document.getElementById('message'),
+        progressBar: document.getElementById('progressBar'),
+        buttonGroup: document.querySelector('.button-group'),
+        helpButton: document.getElementById('helpButton'),
+        audioToggle: document.getElementById('audioToggle'),
+        voiceSelect: document.getElementById('voiceSelect'),
+        rateControl: document.getElementById('rateControl'),
+        pitchControl: document.getElementById('pitchControl'),
+        voiceSettings: document.getElementById('voiceSettings'),
+        newSentenceBlank: document.getElementById('newSentenceBlank'),
+        newWord: document.getElementById('newWord'),
+        newFullSentence: document.getElementById('newFullSentence'),
+        addSentenceButton: document.getElementById('addSentenceButton'),
+        sentenceInputMessage: document.getElementById('sentenceInputMessage')
+    };
 
 
-        // DOM Elements
-        const elements = {
-            categorySelect: document.getElementById('categorySelect'), // Still present in HTML but hidden
-            sentence: document.getElementById('sentence'),
-            answer: document.getElementById('answer'),
-            message: document.getElementById('message'),
-            progressBar: document.getElementById('progressBar'),
-            buttonGroup: document.querySelector('.button-group'),
-            helpButton: document.getElementById('helpButton'),
-            audioToggle: document.getElementById('audioToggle'),
-            voiceSelect: document.getElementById('voiceSelect'),
-            rateControl: document.getElementById('rateControl'),
-            pitchControl: document.getElementById('pitchControl'),
-            voiceSettings: document.getElementById('voiceSettings') // Voice settings container
-        };
-
-
-        // Function to add a "Retry" button if data loading fails
-        function addRetryButton() {
-            if (!document.getElementById('retryButton')) { // Check if retry button already exists to avoid duplicates
-                const retryButton = document.createElement('button');
-                retryButton.id = 'retryButton';
-                retryButton.textContent = 'Retry Loading Quiz Data';
-                retryButton.onclick = loadQuizData; // Re-attempt loading data on click
-                retryButton.ariaLabel = 'Retry loading quiz data'; // Accessibility label
-                elements.buttonGroup.appendChild(retryButton); // Append to button group
-            }
+    function addRetryButton() {
+        if (!document.getElementById('retryButton')) {
+            const retryButton = document.createElement('button');
+            retryButton.id = 'retryButton';
+            retryButton.textContent = 'Retry Loading Quiz Data';
+            retryButton.onclick = loadQuizData;
+            retryButton.ariaLabel = 'Retry loading quiz data';
+            elements.buttonGroup.appendChild(retryButton);
         }
+    }
 
 
-        // Load data from local JSON file or cache - WITH VERSION CHECK, ERROR HANDLING, LOGGING, RETRY, AND PERFORMANCE METRICS
-        async function loadQuizData() {
-            console.groupCollapsed('loadQuizData() execution started'); // **LOGGING GROUP START**
-            const loadStartTime = performance.now(); // **PERFORMANCE METRIC: LOAD START TIME**
-            elements.sentence.textContent = "Loading quiz data...";
-            elements.sentence.classList.add('loading');
-            elements.sentence.classList.remove('error');
+    async function loadQuizData() {
+        elements.sentence.textContent = "Loading quiz data...";
+        elements.sentence.classList.add('loading');
+        elements.sentence.classList.remove('error');
 
-            const cachedData = localStorage.getItem(CACHE_KEY);
-            const cacheExpiryTime = localStorage.getItem(`${CACHE_KEY}_expiry`);
-            const storedDataVersion = localStorage.getItem(DATA_VERSION_KEY);
-            const now = Date.now();
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        const cacheExpiryTime = localStorage.getItem(`${CACHE_KEY}_expiry`);
+        const storedDataVersion = localStorage.getItem(DATA_VERSION_KEY);
+        const now = Date.now();
 
-            if (cachedData && cacheExpiryTime && now < parseInt(cacheExpiryTime, 10) && storedDataVersion) {
-                // Valid cached data found, not expired, and version is stored - CHECK DATA VERSION
-                console.log('Valid cached data found (expiry:', new Date(parseInt(cacheExpiryTime, 10)), ', version:', storedDataVersion, '). Checking for data updates...'); // **LOGGING: CACHE HIT**
-                try {
-                    const versionCheckStartTime = performance.now(); // **PERFORMANCE METRIC: VERSION CHECK START TIME**
-                    const response = await fetch('quiz-data.json', { cache: 'no-cache' }); // revalidate cache by force.
-                    const versionCheckEndTime = performance.now(); // **PERFORMANCE METRIC: VERSION CHECK END TIME**
-                    console.log('Version check fetch completed in', (versionCheckEndTime - versionCheckStartTime).toFixed(1), 'ms.'); // **LOGGING: VERSION CHECK DURATION**
-
-                    if (!response.ok) {
-                        let versionCheckErrorMessage = `Version check failed (HTTP ${response.status}). `;
-                        if (response.status === 404) {
-                            versionCheckErrorMessage += "Quiz data file not found on server. Please check file path.";
-                        } else if (response.status >= 500) {
-                            versionCheckErrorMessage += "Server error during version check. Please try again later.";
-                        } else {
-                            versionCheckErrorMessage += "Network issue during version check. Please check your connection.";
-                        }
-                        console.warn('Network error during version check, using cache.', versionCheckErrorMessage); // **LOGGING: VERSION CHECK NETWORK ERROR**
-                        console.warn('HTTP Status:', response.status, 'URL:', 'quiz-data.json'); // **LOGGING: HTTP ERROR DETAILS**
-                        elements.message.textContent = "Quiz might be using older data. " + versionCheckErrorMessage;
-                        elements.message.classList.add('help-hint');
-                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
-                        elements.sentence.classList.remove('loading');
-                        startQuiz();
-                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
-                        return; // Exit, use cache
-                    }
-                    const jsonData = await response.json();
-                    const currentDataVersion = jsonData.version;
-
-                    // **VERSION NUMBER VALIDATION CHECKS START HERE**
-                    if (typeof currentDataVersion !== 'number') {
-                        console.error('Invalid data version in quiz-data.json: Version is not a number.', currentDataVersion); // **LOGGING: VALIDATION FAILURE - NON-NUMERIC VERSION**
-                        elements.message.textContent = "Error: Invalid quiz data version format. Using cached data.";
-                        elements.message.classList.add('error');
-                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
-                        elements.sentence.classList.remove('loading');
-                        startQuiz();
-                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
-                        return;
-                    }
-
-                    if (storedDataVersion) { // Only compare if there IS a stored version
-                        const storedVersionNumber = parseInt(storedDataVersion, 10);
-                        if (isNaN(storedVersionNumber)) {
-                            console.warn('Stored data version is invalid (not a number), treating as first version.'); // **LOGGING: STORED VERSION INVALID (NON-NUMERIC)**
-                        } else if (currentDataVersion <= storedVersionNumber) {
-                            console.warn(`Quiz data version is not newer (current v${currentDataVersion}, cached v${storedVersionNumber}), using cache.`); // **LOGGING: VERSION NOT NEWER - USING CACHE**
-                            elements.message.textContent = "Quiz data is up-to-date (no new version). Using cached data.";
-                            elements.message.classList.add('help-hint');
-                            quizData = JSON.parse(cachedData).quizData; // Fallback to cache
-                            elements.sentence.classList.remove('loading');
-                            startQuiz();
-                            console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
-                            return;
-                        }
-                    }
-                    // **VERSION NUMBER VALIDATION CHECKS END HERE**
-
-
-                    if (currentDataVersion && (!storedDataVersion || parseInt(storedDataVersion, 10) < currentDataVersion)) {
-                        // ... (new version detected - CACHE UPDATE LOGIC - NO CHANGES HERE) ...
-                        console.log('New quiz data version detected (v' + currentDataVersion + ' vs cached v' + storedDataVersion + '). Updating cache.'); // **LOGGING: NEW VERSION DETECTED - UPDATE START**
-                        // ... (rest of cache update code - NO CHANGES HERE) ...
-                    }
-
-
-                } catch (versionCheckError) {
-                    // Error during version check fetch (e.g., network issue) - Fallback to CACHE (if available) and **ADD NOTIFICATION**
-                    console.warn('Error checking for new quiz data version, using cache. Error:', versionCheckError); // **LOGGING: VERSION CHECK FETCH ERROR (GENERIC)**
-                    console.warn('Error details:', versionCheckError); // **LOGGING: VERSION CHECK ERROR DETAILS**
-                    elements.message.textContent = "Quiz might be using older data due to a network issue.";
-                    elements.message.classList.add('help-hint');
-                    if (cachedData) {
-                        quizData = JSON.parse(cachedData).quizData; // Fallback to cache
-                        elements.sentence.classList.remove('loading');
-                        startQuiz();
-                        console.groupEnd(); // **LOGGING GROUP END (early exit - cache fallback)**
-                        return; // Exit, use cache
-                    } else {
-                        // If no cache even as fallback, proceed to full error handling below to fetch fresh and handle errors.
-                        console.warn('No cache to fallback to after version check error. Proceeding with fresh fetch.'); // **LOGGING: NO CACHE FALLBACK - FRESH FETCH AFTER VERSION CHECK ERROR**
-                    }
-                }
-
-            } else {
-                console.log('No valid cached data or version info available. Fetching fresh quiz data.'); // **LOGGING: NO CACHE - FRESH FETCH START**
-            }
-
-
-            // **FRESH DATA FETCH - ERROR HANDLING WITH RETRY**
-            let retryCount = 0; // **PERFORMANCE METRIC: RETRY COUNT INITIALIZATION**
-            freshFetchAttempt: try { // Label for retry break
-                const freshFetchStartTime = performance.now(); // **PERFORMANCE METRIC: FRESH FETCH START TIME**
-                const response = await fetch('quiz-data.json'); // **INITIAL FRESH DATA FETCH**
-                const freshFetchEndTime = performance.now(); // **PERFORMANCE METRIC: FRESH FETCH END TIME**
-                console.log('Fresh data fetch (attempt 1) completed in', (freshFetchEndTime - freshFetchStartTime).toFixed(1), 'ms.'); // **LOGGING: FRESH FETCH DURATION (ATTEMPT 1)**
-
+        if (cachedData && cacheExpiryTime && now < parseInt(cacheExpiryTime, 10) && storedDataVersion) {
+            try {
+                const response = await fetch('quiz-data.json', { cache: 'no-cache' });
                 if (!response.ok) {
-                    let errorMessage = `Failed to load quiz data (HTTP ${response.status}). `;
-                    if (response.status === 404) {
-                        errorMessage += "Quiz data file not found. Ensure quiz-data.json is in the same directory.";
-                    } else if (response.status >= 500) {
-                        errorMessage += "Server error loading quiz data. Please try again later.";
-                    } else {
-                        errorMessage += "Network issue loading quiz data. Please check your connection.";
-                    }
-                    throw new Error(errorMessage);
-                }
-                const jsonData = await response.json();
-                quizData = jsonData.quizData;
-
-                if (!quizData || quizData.length === 0) {
-                    elements.sentence.textContent = "No quiz data found in quiz-data.json. File is empty or has incorrect format (missing 'quizData' array).";
-                    elements.sentence.classList.remove('loading');
-                    elements.sentence.classList.add('error');
-                    console.error('Quiz data is empty or missing "quizData" array in JSON.'); // **LOGGING: EMPTY/MISSING QUIZ DATA**
-                    console.groupEnd(); // **LOGGING GROUP END (error - empty data)**
-                    return;
-                }
-                const currentDataVersion = jsonData.version;
-
-                localStorage.setItem(CACHE_KEY, JSON.stringify(jsonData));
-                localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY));
-                localStorage.setItem(DATA_VERSION_KEY, String(currentDataVersion || 1));
-
-                const loadEndTime = performance.now(); // **PERFORMANCE METRIC: LOAD END TIME (SUCCESS)**
-                console.log('Quiz data loaded successfully (version', currentDataVersion || 1, ') from quiz-data.json.'); // **LOGGING: FRESH FETCH SUCCESS**
-                console.log('Full data load and cache update completed in', (loadEndTime - loadStartTime).toFixed(1), 'ms.'); // **LOGGING: TOTAL LOAD DURATION (SUCCESS)**
-                elements.sentence.classList.remove('loading');
-                startQuiz();
-                console.groupEnd(); // **LOGGING GROUP END (success)**
-                return;
-
-
-            } catch (error) { // **INITIAL FETCH ERROR CATCH**
-                console.error("Error loading quiz data (initial fetch):", error); // **LOGGING: FRESH FETCH ERROR (INITIAL ATTEMPT)**
-                console.error('Error details:', error); // **LOGGING: FRESH FETCH ERROR DETAILS (INITIAL ATTEMPT)**
-                let displayMessage = "Failed to load quiz data (initial attempt). ";
-                let shouldRetry = false; // Flag to indicate if retry is needed
-
-                if (error.message.includes('HTTP error') && error.message.includes('5')) { // Example: Retry on 5xx errors (server issues - less relevant for local file, but for completeness)
-                    displayMessage += "Server issue. Retrying...";
-                    shouldRetry = true;
-                } else if (error.message.toLowerCase().includes('network error') || error.message.toLowerCase().includes('failed to fetch')) { // Example: Retry on generic network errors (more relevant for local file scenario if accessed over network)
-                    displayMessage += "Possible network problem. Retrying...";
-                    shouldRetry = true;
-                } else if (error.message.includes('JSON')) { // JSON parsing issue on fresh fetch
-                    console.error("JSON parsing error during fresh data fetch:", error); // **LOGGING: JSON PARSING ERROR - FRESH FETCH**
-                    displayMessage = "Error parsing quiz-data.json. The file might be corrupted or have invalid JSON format."; // More specific JSON message
-                    elements.sentence.textContent = displayMessage;
-                    elements.sentence.classList.remove('loading');
-                    elements.sentence.classList.add('error');
-                    console.groupEnd(); // **LOGGING GROUP END (error - JSON parsing)**
-                    if (cachedData) {
-                        elements.message.textContent = "Using cached data from previous load.";
-                        elements.message.classList.add('help-hint');
-                        quizData = JSON.parse(cachedData).quizData;
-                        startQuiz();
-                    } else {
-                        addRetryButton();
-                    }
-                    return; // Exit, handle JSON parsing error
-                }
-
-
-                if (shouldRetry) {
-                    retryCount++; // **PERFORMANCE METRIC: INCREMENT RETRY COUNT**
-                    elements.message.textContent = displayMessage; // Show "Retrying..." message
-                    elements.sentence.classList.add('loading'); // Keep loading indicator
-                    console.warn('Retrying data fetch (attempt 2) due to transient error:', error.message); // **LOGGING: RETRY ATTEMPT START**
-
-                    try {
-                        // **RETRY FETCH ATTEMPT**
-                        const retryStartTime = performance.now(); // **PERFORMANCE METRIC: RETRY FETCH START TIME**
-                        const retryResponse = await fetch('quiz-data.json'); // **RETRY FETCH**
-                        const retryEndTime = performance.now(); // **PERFORMANCE METRIC: RETRY FETCH END TIME**
-                        console.log('Retry data fetch completed in', (retryEndTime - retryStartTime).toFixed(1), 'ms.'); // **LOGGING: RETRY FETCH DURATION**
-
-                        if (!retryResponse.ok) {
-                            // Retry fetch also failed - handle as fatal error below
-                            throw new Error(`Retry failed (HTTP ${retryResponse.status}).`); // Throw error to be caught in outer catch
-                        }
-                        const retryJsonData = await retryResponse.json();
-                        quizData = retryJsonData.quizData;
-
-                        const currentDataVersion = retryJsonData.version;
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(retryJsonData));
-                        localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY));
-                        localStorage.setItem(DATA_VERSION_KEY, String(currentDataVersion || 1));
-
-                        const loadEndTimeRetry = performance.now(); // **PERFORMANCE METRIC: LOAD END TIME (RETRY SUCCESS)**
-                        console.log('Quiz data loaded successfully on retry (version', currentDataVersion || 1, ').'); // **LOGGING: RETRY FETCH SUCCESS**
-                        console.log('Full data load and cache update (after retry) completed in', (loadEndTimeRetry - loadStartTime).toFixed(1), 'ms. (Retry count:', retryCount, ')'); // **LOGGING: TOTAL LOAD DURATION (RETRY SUCCESS)**
-                        elements.sentence.classList.remove('loading');
-                        startQuiz();
-                        console.groupEnd(); // **LOGGING GROUP END (retry success)**
-                        return; // Exit after successful retry
-
-                    } catch (retryError) {
-                        // **RETRY FETCH FAILED - FALLBACK HANDLING**
-                        console.error("Error loading quiz data (retry failed):", retryError); // **LOGGING: RETRY FETCH FAILURE**
-                        console.error('Retry error details:', retryError); // **LOGGING: RETRY FETCH ERROR DETAILS**
-                        displayMessage = "Failed to load quiz data after retry. "; // Update display message for retry failure
-                        if (retryError.message.includes('HTTP error')) {
-                            displayMessage = retryError.message; // Append HTTP error details if available
-                        } else {
-                            displayMessage += " Please check your connection and quiz-data.json."; // Generic fallback message
-                        }
-                        // Proceed to fallback to cache or no-cache error handling below with updated displayMessage
-                    }
-                }
-
-
-                // **FALLBACK TO CACHE OR NO-CACHE ERROR (AFTER INITIAL FETCH OR RETRY FAILURE)**
-                if (cachedData) {
-                    console.warn('Final fallback: Using cached quiz data due to load failure.'); // **LOGGING: CACHE FALLBACK - FINAL**
-                    elements.message.textContent = "Quiz data update failed. Using data from previous load. " + displayMessage; // Use potentially updated displayMessage
+                    elements.message.textContent = "Quiz might be using older data due to a network issue.";
                     elements.message.classList.add('help-hint');
                     quizData = JSON.parse(cachedData).quizData;
                     elements.sentence.classList.remove('loading');
                     startQuiz();
-                    console.groupEnd(); // **LOGGING GROUP END (final - cache fallback)**
-                } else {
-                    console.error('Fatal error: Failed to load quiz data and no cache available.'); // **LOGGING: FATAL ERROR - NO CACHE FALLBACK**
-                    elements.sentence.textContent = displayMessage; // Use potentially updated displayMessage
+                    return;
+                }
+                const jsonData = await response.json();
+                const currentDataVersion = jsonData.version;
+                if (storedDataVersion && currentDataVersion <= parseInt(storedDataVersion, 10)) {
+                    elements.message.textContent = "Quiz data is up-to-date.";
+                    elements.message.classList.add('help-hint');
+                    quizData = JSON.parse(cachedData).quizData;
                     elements.sentence.classList.remove('loading');
-                    elements.sentence.classList.add('error');
-                    addRetryButton();
-                    console.groupEnd(); // **LOGGING GROUP END (final - fatal error)**
+                    startQuiz();
+                    return;
+                }
+            } catch (versionCheckError) {
+                elements.message.textContent = "Quiz might be using older data due to a network issue.";
+                elements.message.classList.add('help-hint');
+                if (cachedData) {
+                    quizData = JSON.parse(cachedData).quizData;
+                    elements.sentence.classList.remove('loading');
+                    startQuiz();
+                    return;
                 }
             }
         }
 
+        try {
+            const response = await fetch('quiz-data.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load quiz data (HTTP ${response.status}).`);
+            }
+            const jsonData = await response.json();
+            quizData = jsonData.quizData;
 
-        // Voice setup (Modified to populate voice dropdown and load/save preferences)
-        async function setupVoice() {
-            if (!synth) {
-                console.warn('Speech synthesis not supported');
-                elements.sentence.textContent = "Speech synthesis is not available in this browser. 😔 Audio playback will be disabled.";
+            if (!quizData || quizData.length === 0) {
+                elements.sentence.textContent = "No quiz data found in quiz-data.json.";
                 elements.sentence.classList.remove('loading');
                 elements.sentence.classList.add('error');
-                elements.audioToggle.style.display = 'none';
-                elements.voiceSettings.style.display = 'none'; // Hide voice settings if TTS not supported
                 return;
             }
 
-            elements.sentence.textContent = "Loading voice options..."; // Updated message to reflect voice options loading
-            elements.sentence.classList.add('loading');
-
-            let voiceCheckTimeout;
-            const voices = await new Promise(resolve => {
-                let voiceCheckInterval = setInterval(() => {
-                    const availableVoices = synth.getVoices();
-                    if (availableVoices.length > 0) {
-                        clearInterval(voiceCheckInterval);
-                        clearTimeout(voiceCheckTimeout);
-                        resolve(availableVoices);
-                    }
-                }, 100);
-
-                voiceCheckTimeout = setTimeout(() => {
-                    clearInterval(voiceCheckInterval);
-                    resolve(synth.getVoices());
-                    console.warn('Voice loading timed out. Using available voices.');
-                    elements.message.textContent = "Voice option loading may be slow. Using available voices.";
-                    elements.message.classList.add('help-hint');
-                }, 3000);
-            });
-
-            // Populate voice dropdown
-            populateVoiceDropdown(voices); // Call new function to populate dropdown
-
-            // Load preferred voice URI from localStorage
-            preferredVoiceURI = localStorage.getItem(VOICE_PREF_KEY);
-            preferredRate = parseFloat(localStorage.getItem(RATE_PREF_KEY) || '0.9'); // Load rate, default 0.9
-            preferredPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY) || '1.0'); // Load pitch, default 1.0
-
-            elements.rateControl.value = preferredRate; // Set slider values from preferences
-            elements.pitchControl.value = preferredPitch;
+            const userQuizSentencesJSON = localStorage.getItem(USER_QUIZ_DATA_KEY);
+            const userQuizSentences = JSON.parse(userQuizSentencesJSON || '[]');
+            quizData = jsonData.quizData.concat(userQuizSentences);
 
 
-            // Prioritized voice selection (now using preferredVoiceURI if set)
-            if (preferredVoiceURI) {
-                googleVoice = voices.find(v => v.voiceURI === preferredVoiceURI); // Try to use preferred voice
-            }
-            if (!googleVoice) { // If preferred voice not found or not set, use fallback logic
-                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
-                if (!googleVoice) {
-                    googleVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
-                }
-                if (!googleVoice) {
-                    googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US');
-                }
-                if (!googleVoice) {
-                    googleVoice = voices.find(v => v.lang === 'en-US');
-                }
-                if (!googleVoice) {
-                    googleVoice = voices.find(v => v.name.toLowerCase().includes('female'));
-                }
-                if (!googleVoice) {
-                    googleVoice = voices[0];
-                }
-            }
-
+            const currentDataVersion = jsonData.version;
+            localStorage.setItem(CACHE_KEY, JSON.stringify(jsonData));
+            localStorage.setItem(`${CACHE_KEY}_expiry`, String(now + CACHE_EXPIRY));
+            localStorage.setItem(DATA_VERSION_KEY, String(currentDataVersion || 1));
             elements.sentence.classList.remove('loading');
-            elements.sentence.textContent = "";
+            startQuiz();
 
-            if (!googleVoice) {
-                console.warn('No suitable voice found even after timeout.');
-                elements.message.textContent = "No suitable voice found. Using default browser voice.";
+        } catch (error) {
+            let displayMessage = "Failed to load quiz data.";
+            if (error.message.includes('JSON')) {
+                displayMessage = "Error parsing quiz-data.json.";
+            }
+
+            if (cachedData) {
+                elements.message.textContent = "Quiz data update failed. Using data from previous load. " + displayMessage;
                 elements.message.classList.add('help-hint');
-            }
-        }
-
-        // New function to populate voice dropdown
-        function populateVoiceDropdown(voiceList) {
-            elements.voiceSelect.innerHTML = ''; // Clear existing options
-            voiceList.forEach(voice => {
-                const option = document.createElement('option');
-                option.value = voice.voiceURI; // Store voiceURI as value
-                option.textContent = `${voice.name} (${voice.lang})`;
-                elements.voiceSelect.appendChild(option);
-            });
-
-            // Set selected option to preferredVoiceURI if it's valid and in the list
-            if (preferredVoiceURI) {
-                const validPreferredVoice = voiceList.some(v => v.voiceURI === preferredVoiceURI);
-                if (validPreferredVoice) {
-                    elements.voiceSelect.value = preferredVoiceURI;
-                }
-            }
-            // Event listener to save voice preference when dropdown changes
-            elements.voiceSelect.addEventListener('change', saveVoicePreference);
-        }
-
-        // Function to save voice preference to localStorage
-        function saveVoicePreference() {
-            preferredVoiceURI = elements.voiceSelect.value;
-            localStorage.setItem(VOICE_PREF_KEY, preferredVoiceURI);
-        }
-
-        // Function to update score display in UI
-        function updateScoreDisplay() {
-            const highScoreDisplay = document.getElementById('highScoreDisplay');
-            const quizCountDisplay = document.getElementById('quizCountDisplay');
-
-            if (highScoreDisplay) {
-                highScoreDisplay.textContent = `High Score: ${highScore}`;
-            }
-            if (quizCountDisplay) {
-                quizCountDisplay.textContent = `Quizzes Taken: ${quizCount}`;
-            }
-        }
-
-
-        // Quiz functions (mostly same logic, UI updates enhanced) - SAME AS BEFORE
-        function startQuiz() {
-            currentIndex = 0;
-            score = 0;
-            elements.answer.style.display = 'block';
-            elements.message.style.display = 'block';
-            helpToggle = 0;
-            elements.helpButton.textContent = '🔊 Help';
-            updateUI();
-        }
-
-        function updateUI() {
-            requestAnimationFrame(() => {
-                const progress = quizData.length ? (currentIndex / quizData.length) * 100 : 0;
-                if (currentIndex >= quizData.length) {
-                    elements.progressBar.style.width = `${progress}%`;
-                    elements.sentence.textContent = `🎉 Quiz Completed! Your score: ${score}/${quizData.length}`;
-                    elements.answer.style.display = 'none';
-                    elements.message.style.display = 'none';
-                    elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
-
-                    // Check for high score update and update localStorage
-                    if (score > highScore) {
-                        highScore = score;
-                        localStorage.setItem(HIGH_SCORE_KEY, String(highScore)); // Store new high score
-                    }
-                    quizCount++; // Increment quiz count
-                    localStorage.setItem(QUIZ_COUNT_KEY, String(quizCount)); // Store updated quiz count
-                    updateScoreDisplay(); // Update the score display in the UI
-                } else {
-                    elements.progressBar.style.width = `${progress}%`;
-                    elements.sentence.textContent = `Question ${currentIndex + 1} of ${quizData.length}: ${quizData[currentIndex].sentence}`;
-                    elements.answer.value = '';
-                    elements.message.textContent = '';
-                    elements.message.className = 'message';
-                    if (!isMuted) speak(quizData[currentIndex].fullSentence);
-                    elements.answer.focus();
-                }
-            });
-        }
-
-        // Modify speak function to use preferred voice, rate, and pitch
-        function speak(text) {
-            if (!synth || !googleVoice || isMuted || Date.now() - lastSpeakTime < 300) return;
-
-            if (text === currentUtteranceText && Date.now() - lastSpeakTime < 1000) {
-                return;
-            }
-
-            try {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.voice = googleVoice; // Still use googleVoice as fallback if preferred not set/invalid
-
-                // Use preferred rate and pitch from sliders and localStorage
-                utterance.rate = parseFloat(elements.rateControl.value);
-                utterance.pitch = parseFloat(elements.pitchControl.value);
-
-
-                synth.cancel();
-                synth.speak(utterance);
-                lastSpeakTime = Date.now();
-                currentUtteranceText = text;
-            } catch (error) {
-                console.error('Speech synthesis failed:', error);
-            }
-        }
-
-        // Event listeners for rate and pitch sliders to save preferences
-        elements.rateControl.addEventListener('input', saveRatePreference);
-        elements.pitchControl.addEventListener('input', savePitchPreference);
-
-        function saveRatePreference() {
-            preferredRate = parseFloat(elements.rateControl.value);
-            localStorage.setItem(RATE_PREF_KEY, String(preferredRate));
-        }
-
-        function savePitchPreference() {
-            preferredPitch = parseFloat(elements.pitchControl.value);
-            localStorage.setItem(PITCH_PREF_KEY, String(preferredPitch));
-        }
-
-
-        function checkAnswer() {
-            const answer = elements.answer.value.trim().toLowerCase();
-            if (!answer) {
-                elements.message.textContent = "Please enter a word!";
-                return;
-            }
-            const correct = quizData[currentIndex]?.word.toLowerCase();
-            if (answer === correct) {
-                elements.message.textContent = "✅ Correct! ";
-                // Definition is not used/displayed in this version as per request
-                elements.message.className = 'message correct feedback-animation';
-                score++;
-                currentIndex++;
-                setTimeout(() => {
-                    updateUI();
-                }, 1500);
+                quizData = JSON.parse(cachedData).quizData;
+                elements.sentence.classList.remove('loading');
+                startQuiz();
             } else {
-                elements.message.textContent = `❌ Incorrect. The word was "${quizData[currentIndex].word}". Try the next one!`;
-                elements.message.className = 'message incorrect feedback-animation';
-                speak(quizData[currentIndex].fullSentence);
-                setTimeout(() => {
-                    updateUI();
-                }, 1500);
+                elements.sentence.textContent = displayMessage;
+                elements.sentence.classList.remove('loading');
+                elements.sentence.classList.add('error');
+                addRetryButton();
             }
         }
+    }
 
-        function toggleHelp() {
-            helpToggle = (helpToggle + 1) % 3;
-            if (helpToggle === 0) {
-                elements.helpButton.textContent = '🔊 Help';
-                elements.message.textContent = '';
-                elements.message.className = 'message';
-            } else if (helpToggle === 1) {
-                elements.helpButton.textContent = '🔊 Replay';
-                elements.message.textContent = '';
-                elements.message.className = 'message';
-                if (quizData[currentIndex]) speak(quizData[currentIndex].fullSentence);
-            } else if (helpToggle === 2) {
-                elements.helpButton.textContent = '💡 Hint';
-                if (quizData[currentIndex]) {
-                    elements.message.textContent = `Hint: Starts with '${quizData[currentIndex].word[0]}...'`;
-                    elements.message.className = 'message help-hint feedback-animation';
-                }
-            }
+
+    function addUserSentence() {
+        const sentenceBlank = elements.newSentenceBlank.value.trim();
+        const word = elements.newWord.value.trim().toLowerCase();
+        const fullSentence = elements.newFullSentence.value.trim();
+
+        if (!sentenceBlank || !word) {
+            elements.sentenceInputMessage.textContent = "Please fill in both 'Sentence with blank' and 'Missing Word' fields.";
+            elements.sentenceInputMessage.className = 'message error';
+            return;
         }
 
-        function toggleAudio() {
-            isMuted = !isMuted;
-            elements.audioToggle.textContent = isMuted ? '🔇 Off' : '🔊 On';
-        }
-
-        // Simple (and not very accurate) device performance check - REPLACE with better detection if needed
-        const isLowPerformanceDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Opera Mini/i.test(navigator.userAgent) && navigator.deviceMemory <= 2; // Example: Mobile AND low deviceMemory
-
-        if (isLowPerformanceDevice) {
-            document.body.classList.add('no-animation'); // Add 'no-animation' class to body to disable animations
-            console.log('Low performance device detected. Animations disabled.'); // Log for debugging
+        if (!sentenceBlank.includes('____') && !sentenceBlank.includes('[]')) {
+            elements.sentenceInputMessage.textContent = "Sentence with blank should contain '____' or '[]'.";
+            elements.sentenceInputMessage.className = 'message error';
+            return;
         }
 
 
-        // Initialize
-        window.onload = async () => {
-            await setupVoice(); // setupVoice now populates dropdown and loads preferences
-            loadQuizData();
-            highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || '0', 10);
-            quizCount = parseInt(localStorage.getItem(QUIZ_COUNT_KEY) || '0', 10);
-            updateScoreDisplay();
-
-            // Load preferred rate and pitch on page load from localStorage
-            elements.rateControl.value = parseFloat(localStorage.getItem(RATE_PREF_KEY) || '0.9');
-            elements.pitchControl.value = parseFloat(localStorage.getItem(PITCH_PREF_KEY) || '1.0');
+        const newQuizItem = {
+            sentence: sentenceBlank,
+            word: word,
+            fullSentence: fullSentence || sentenceBlank.replace(/____|\[\]/, word)
         };
 
-        // Enter key support
-        elements.answer.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') checkAnswer();
+        let userQuizSentences = JSON.parse(localStorage.getItem(USER_QUIZ_DATA_KEY) || '[]');
+        userQuizSentences.push(newQuizItem);
+        localStorage.setItem(USER_QUIZ_DATA_KEY, JSON.stringify(userQuizSentences));
+
+        elements.sentenceInputMessage.textContent = "Sentence added successfully!";
+        elements.sentenceInputMessage.className = 'message correct';
+
+        elements.newSentenceBlank.value = '';
+        elements.newWord.value = '';
+        elements.newFullSentence.value = '';
+
+        loadQuizData();
+    }
+
+
+    async function setupVoice() {
+        if (!synth) {
+            elements.sentence.textContent = "Speech synthesis is not available.";
+            elements.sentence.classList.remove('loading');
+            elements.sentence.classList.add('error');
+            elements.audioToggle.style.display = 'none';
+            elements.voiceSettings.style.display = 'none';
+            return;
+        }
+
+        elements.sentence.textContent = "Loading voice options...";
+        elements.sentence.classList.add('loading');
+
+        let voiceCheckTimeout;
+        const voices = await new Promise(resolve => {
+            let voiceCheckInterval = setInterval(() => {
+                const availableVoices = synth.getVoices();
+                if (availableVoices.length > 0) {
+                    clearInterval(voiceCheckInterval);
+                    clearTimeout(voiceCheckTimeout);
+                    resolve(availableVoices);
+                }
+            }, 100);
+
+            voiceCheckTimeout = setTimeout(() => {
+                clearInterval(voiceCheckInterval);
+                resolve(synth.getVoices());
+                console.warn('Voice loading timed out.');
+            }, 3000);
         });
+        populateVoiceDropdown(voices);
+        preferredVoiceURI = localStorage.getItem(VOICE_PREF_KEY);
+        preferredRate = parseFloat(localStorage.getItem(RATE_PREF_KEY) || '0.9');
+        preferredPitch = parseFloat(localStorage.getItem(PITCH_PREF_KEY) || '1.0');
+        elements.rateControl.value = preferredRate;
+        elements.pitchControl.value = preferredPitch;
+
+        if (preferredVoiceURI) {
+            googleVoice = voices.find(v => v.voiceURI === preferredVoiceURI);
+        }
+        if (!googleVoice) {
+            googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+            if (!googleVoice) {
+                googleVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+            }
+            if (!googleVoice) {
+                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US');
+            }
+            if (!googleVoice) {
+                googleVoice = voices.find(v => v.lang === 'en-US');
+            }
+            if (!googleVoice) {
+                googleVoice = voices.find(v => v.name.toLowerCase().includes('female'));
+            }
+            if (!googleVoice) {
+                googleVoice = voices[0];
+            }
+        }
+
+        elements.sentence.classList.remove('loading');
+        elements.sentence.textContent = "";
+    }
+
+    function populateVoiceDropdown(voiceList) {
+        elements.voiceSelect.innerHTML = '';
+        voiceList.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.voiceURI;
+            option.textContent = `${voice.name} (${voice.lang})`;
+            elements.voiceSelect.appendChild(option);
+        });
+        if (preferredVoiceURI) {
+            const validPreferredVoice = voiceList.some(v => v.voiceURI === preferredVoiceURI);
+            if (validPreferredVoice) {
+                elements.voiceSelect.value = preferredVoiceURI;
+            }
+        }
+        elements.voiceSelect.addEventListener('change', saveVoicePreference);
+    }
+
+    function saveVoicePreference() {
+        preferredVoiceURI = elements.voiceSelect.value;
+        localStorage.setItem(VOICE_PREF_KEY, preferredVoiceURI);
+    }
+    function saveRatePreference() {
+        preferredRate = parseFloat(elements.rateControl.value);
+        localStorage.setItem(RATE_PREF_KEY, String(preferredRate));
+    }
+    function savePitchPreference() {
+        preferredPitch = parseFloat(elements.pitchControl.value);
+        localStorage.setItem(PITCH_PREF_KEY, String(preferredPitch));
+    }
+
+    function updateScoreDisplay() {
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const quizCountDisplay = document.getElementById('quizCountDisplay');
+
+        if (highScoreDisplay) {
+            highScoreDisplay.textContent = `High Score: ${highScore}`;
+        }
+        if (quizCountDisplay) {
+            quizCountDisplay.textContent = `Quizzes Taken: ${quizCount}`;
+        }
+    }
+
+
+    function startQuiz() {
+        currentIndex = 0;
+        score = 0;
+        elements.answer.style.display = 'block';
+        elements.message.style.display = 'block';
+        helpToggle = 0;
+        elements.helpButton.textContent = '🔊 Help';
+        updateUI();
+    }
+
+    function updateUI() {
+        requestAnimationFrame(() => {
+            const progress = quizData.length ? (currentIndex / quizData.length) * 100 : 0;
+            if (currentIndex >= quizData.length) {
+                elements.progressBar.style.width = `${progress}%`;
+                elements.sentence.textContent = `🎉 Quiz Completed! Your score: ${score}/${quizData.length}`;
+                elements.answer.style.display = 'none';
+                elements.message.style.display = 'none';
+                elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
+                }
+                quizCount++;
+                localStorage.setItem(QUIZ_COUNT_KEY, String(quizCount));
+                updateScoreDisplay();
+            } else {
+                elements.progressBar.style.width = `${progress}%`;
+                elements.sentence.textContent = `Question ${currentIndex + 1} of ${quizData.length}: ${quizData[currentIndex].sentence}`;
+                elements.answer.value = '';
+                elements.message.textContent = '';
+                elements.message.className = 'message';
+                if (!isMuted) speak(quizData[currentIndex].fullSentence);
+                elements.answer.focus();
+            }
+        });
+    }
+
+
+    function speak(text) {
+        if (!synth || !googleVoice || isMuted || Date.now() - lastSpeakTime < 300) return;
+        if (text === currentUtteranceText && Date.now() - lastSpeakTime < 1000) {
+            return;
+        }
+        try {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = googleVoice;
+            utterance.rate = parseFloat(elements.rateControl.value);
+            utterance.pitch = parseFloat(elements.pitchControl.value);
+            synth.cancel();
+            synth.speak(utterance);
+            lastSpeakTime = Date.now();
+            currentUtteranceText = text;
+        } catch (error) {
+            console.error('Speech synthesis failed:', error);
+        }
+    }
+
+    elements.rateControl.addEventListener('input', saveRatePreference);
+    elements.pitchControl.addEventListener('input', savePitchPreference);
+
+
+    function checkAnswer() {
+        const answer = elements.answer.value.trim().toLowerCase();
+        if (!answer) {
+            elements.message.textContent = "Please enter a word!";
+            return;
+        }
+        const correct = quizData[currentIndex]?.word.toLowerCase();
+        if (answer === correct) {
+            elements.message.textContent = "✅ Correct! ";
+            elements.message.className = 'message correct feedback-animation';
+            score++;
+            currentIndex++;
+            setTimeout(() => {
+                updateUI();
+            }, 1500);
+        } else {
+            elements.message.textContent = `❌ Incorrect. The word was "${quizData[currentIndex].word}". Try the next one!`;
+            elements.message.className = 'message incorrect feedback-animation';
+            speak(quizData[currentIndex].fullSentence);
+            setTimeout(() => {
+                updateUI();
+            }, 1500);
+        }
+    }
+
+    function toggleHelp() {
+        helpToggle = (helpToggle + 1) % 3;
+        if (helpToggle === 0) {
+            elements.helpButton.textContent = '🔊 Help';
+            elements.message.textContent = '';
+            elements.message.className = 'message';
+        } else if (helpToggle === 1) {
+            elements.helpButton.textContent = '🔊 Replay';
+            elements.message.textContent = '';
+            elements.message.className = 'message';
+            if (quizData[currentIndex]) speak(quizData[currentIndex].fullSentence);
+        } else if (helpToggle === 2) {
+            elements.helpButton.textContent = '💡 Hint';
+            if (quizData[currentIndex]) {
+                elements.message.textContent = `Hint: Starts with '${quizData[currentIndex].word[0]}...'`;
+                elements.message.className = 'message help-hint feedback-animation';
+            }
+        }
+    }
+
+    function toggleAudio() {
+        isMuted = !isMuted;
+        elements.audioToggle.textContent = isMuted ? '🔇 Off' : '🔊 On';
+    }
+
+
+    const isLowPerformanceDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Opera Mini/i.test(navigator.userAgent) && navigator.deviceMemory <= 2;
+    if (isLowPerformanceDevice) {
+        document.body.classList.add('no-animation');
+        console.log('Low performance device detected. Animations disabled.');
+    }
+
+
+    window.onload = async () => {
+        await setupVoice();
+        loadQuizData();
+        highScore = parseInt(localStorage.getItem(HIGH_SCORE_KEY) || '0', 10);
+        quizCount = parseInt(localStorage.getItem(QUIZ_COUNT_KEY) || '0', 10);
+        updateScoreDisplay();
+        elements.rateControl.value = parseFloat(localStorage.getItem(RATE_PREF_KEY) || '0.9');
+        elements.pitchControl.value = parseFloat(localStorage.getItem(PITCH_PREF_KEY) || '1.0');
+    };
+
+    elements.answer.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') checkAnswer();
+    });
+        </div>
+
+    <script>
+        /* Paste the JavaScript code from Part 3 here */
     </script>
 </body>
-</html>
