@@ -166,7 +166,7 @@
         const quizData = rows.map(row => {
           const [word, example] = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
           if (!word || !example) return null;
-          const regex = new RegExp(\\`\\\\b\${word.trim()}\\\\b\\`, 'gi');
+          const regex = new RegExp(\`\\\\b\${word.trim()}\\\\b\`, 'gi');
           return {
             word: word.trim(),
             sentence: example.trim().replace(regex, '____'),
@@ -296,7 +296,6 @@
 
     function checkAnswer() {
       const answer = elements.answer.value.trim().toLowerCase();
-      if (e.key !== 'Enter') return;
       const correct = quizData[currentIndex]?.word.toLowerCase();
       if (!correct) return;
       if (answer === correct) {
