@@ -1,4 +1,392 @@
-let quizData = []; // Will hold the quiz questions
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Completion Quiz</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        #sentence-input-card {
+            margin-bottom: 30px;
+        }
+
+        #sentence-input-card h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #sentence-input-card .form-group {
+            margin-bottom: 15px;
+        }
+
+        #sentence-input-card label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        #sentence-input-card textarea,
+        #sentence-input-card input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        #sentence-input-card textarea {
+            min-height: 120px;
+        }
+
+        #sentence-input-card button {
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #sentence-input-card button:hover {
+            background-color: #4cae4c;
+        }
+
+        #progress {
+            background-color: #e0e8e5;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        #progressBar {
+            height: 10px;
+            background-color: #29a9ff;
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+
+        #sentence {
+            font-size: 22px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #333;
+            text-align: center;
+            min-height: 24px; /* Ensure sentence area maintains height */
+        }
+
+        #sentence.loading::after {
+            content: '...Loading';
+            animation: dots 1s steps(3, end) infinite;
+        }
+
+        #sentence.error {
+            color: #d9534f;
+        }
+
+        @keyframes dots {
+            0%, 100% { content: '...Loading'; }
+            33%  { content: 'Loading...'; }
+            66% { content: '..Loading.'; }
+        }
+
+        #sentence-highlight {
+            font-size: 22px; /* Match sentence font size */
+            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #333;
+            text-align: center;
+            min-height: 24px; /* Ensure highlight area maintains height */
+        }
+
+        #sentence-highlight span.highlighted-word {
+            color: #007bff; /* Highlighted word color - blue */
+            font-weight: bold;
+            transition: color 0.2s ease; /* Smooth color transition */
+        }
+
+
+        #answer {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 18px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        #answer:focus {
+            outline: none;
+            border-color: #29a9ff;
+            box-shadow: 0 0 5px rgba(41, 169, 255, 0.5);
+        }
+
+        #message {
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 24px;
+        }
+
+        .message.correct {
+            color: #5cb85c;
+            animation: feedback 1.5s ease-out forwards;
+        }
+
+        .message.incorrect {
+            color: #d9534f;
+            animation: feedback 1.5s ease-out forwards;
+        }
+
+        .message.help-hint {
+            color: #f0ad4e;
+        }
+
+        @keyframes feedback {
+            0% { opacity: 0; transform: translateY(-10px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .button-group button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-group button:hover {
+            background-color: #0056b3;
+        }
+
+        .button-group button#helpButton {
+            background-color: #f0ad4e;
+        }
+
+        .button-group button#helpButton:hover {
+            background-color: #ea9b39;
+        }
+
+        .button-group button#audioToggle {
+            background-color: #6c757d;
+        }
+
+        .button-group button#audioToggle:hover {
+            background-color: #5a6268;
+        }
+
+        #voiceSettings {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        #voiceSettings label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        #voiceSelect, #rateControl, #pitchControl {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 15px;
+        }
+
+        #highScoreDisplay, #quizCountDisplay {
+            text-align: center;
+            font-size: 16px;
+            color: #777;
+            margin-bottom: 10px;
+        }
+
+        .no-animation * {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        /* Additions for new features */
+        .example-text {
+            font-size: 0.9em;
+            color: #777;
+            margin-top: 3px;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .button-row {
+            display: flex;
+            justify-content: space-between; /* Space out buttons in input card */
+            gap: 10px; /* Gap between buttons */
+        }
+
+        .button-row button {
+            width: 48%; /* Make buttons take up roughly half width */
+        }
+
+
+        #reviewIncorrectDisplay {
+            margin-top: 20px;
+        }
+
+        #reviewIncorrectButton {
+            background-color: #ffc107; /* Example: Yellow/Amber color for review button */
+            color: #333; /* Dark text for contrast */
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #reviewIncorrectButton:hover {
+            background-color: #ffb300; /* Darker yellow on hover */
+        }
+
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            #sentence {
+                font-size: 20px;
+            }
+
+            #sentence-highlight {
+                font-size: 20px;
+            }
+
+            #answer {
+                font-size: 16px;
+            }
+
+            .button-group button {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body class="">
+    <div class="container">
+        <div class="card" id="sentence-input-card">
+            <h3>Add Your Own Sentences</h3>
+            <div class="form-group">
+                <label for="newSentenceBlank">Sentence with blank (use ____ or [] for missing word):</label>
+                <textarea id="newSentenceBlank" placeholder="e.g., The bird can ____." aria-label="Sentence with blank input"></textarea>
+                <p class="example-text">Example: The sun is shining ____.</p>
+            </div>
+            <div class="form-group">
+                <label for="newWord">Missing Word:</label>
+                <input type="text" id="newWord" placeholder="e.g., fly" aria-label="Missing word input">
+                <p class="example-text">Example: brightly</p>
+            </div>
+            <div class="form-group">
+                <label for="newFullSentence">Full Sentence (for audio - optional):</label>
+                <input type="text" id="newFullSentence" placeholder="e.g., The bird can fly." aria-label="Full sentence for audio input">
+                <p class="example-text">Example: The sun is shining brightly.</p>
+            </div>
+            <div class="button-row">
+                <button id="addSentenceButton" onclick="addUserSentence()" aria-label="Add sentence to quiz">Add Sentence</button>
+                <button id="addAnotherButton" onclick="clearSentenceInput()" style="display:none;" aria-label="Add another sentence">Add Another</button>
+            </div>
+            <div id="sentenceInputMessage" class="message" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="card">
+            <div id="progress"><div id="progressBar"></div></div>
+            <p id="sentence"></p>
+            <div id="sentence-highlight" aria-live="polite"></div>
+            <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none" aria-label="Answer input">
+            <div id="message"></div>
+            <div class="button-group">
+                <button id="submitButton" onclick="checkAnswer()" aria-label="Submit answer">Submit</button>
+                <button id="replayButton" onclick="replaySentence()" aria-label="Replay sentence audio">🔊 Replay</button>
+                <button id="helpButton" onclick="toggleHelp()" aria-label="Help options">💡 Help</button>
+                <button id="audioToggle" onclick="toggleAudio()" aria-label="Toggle audio">🔊 On</button>
+                <button id="slowAudioButton" onclick="setSlowAudio()" aria-label="Set slow speech rate">🐢 Slow Audio</button>
+            </div>
+
+            <div id="voiceSettings" style="margin-top: 15px;">
+                <label for="voiceSelect" style="display: block; margin-bottom: 5px;">Choose Voice:</label>
+                <select id="voiceSelect" aria-label="Select voice"></select>
+
+                <label for="rateControl" style="display: block; margin-top: 10px; margin-bottom: 5px;">Speech Rate:</label>
+                <input type="range" id="rateControl" min="0.5" max="2" step="0.1" value="0.9" aria-label="Adjust speech rate">
+
+                <label for="pitchControl" style="display: block; margin-top: 10px; margin-bottom: 5px;">Speech Pitch:</label>
+                <input type="range" id="pitchControl" min="0" max="2" step="0.1" value="1" aria-label="Adjust speech pitch">
+            </div>
+
+            <div id="highScoreDisplay"></div>
+            <div id="quizCountDisplay"></div>
+            <div id="reviewIncorrectDisplay" style="margin-top: 20px; display:none;">
+                <button id="reviewIncorrectButton" onclick="startReviewQuiz()" aria-label="Review incorrect answers">Review Incorrect Answers</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let quizData = [];
     let currentIndex = 0;
     let score = 0;
     let synth = window.speechSynthesis;
@@ -16,25 +404,25 @@ let quizData = []; // Will hold the quiz questions
     const PITCH_PREF_KEY = 'preferredSpeechPitch_v1';
     const DATA_VERSION_KEY = 'quizDataVersion_v1';
     const USER_QUIZ_DATA_KEY = 'userQuizData_v1';
-    const INCORRECT_SENTENCES_KEY = 'incorrectQuizSentences_v1'; // Key for storing incorrect sentences
+    const INCORRECT_SENTENCES_KEY = 'incorrectQuizSentences_v1';
     let highScore = 0;
     let quizCount = 0;
     let preferredVoiceURI = null;
     let preferredRate = 0.9;
     let preferredPitch = 1.0;
-    let incorrectSentences = []; // Array to hold sentences answered incorrectly
+    let incorrectSentences = [];
 
     const elements = {
         sentence: document.getElementById('sentence'),
-        sentenceHighlight: document.getElementById('sentence-highlight'), // New highlight element
+        sentenceHighlight: document.getElementById('sentence-highlight'),
         answer: document.getElementById('answer'),
         message: document.getElementById('message'),
         progressBar: document.getElementById('progressBar'),
         buttonGroup: document.querySelector('.button-group'),
         helpButton: document.getElementById('helpButton'),
         audioToggle: document.getElementById('audioToggle'),
-        slowAudioButton: document.getElementById('slowAudioButton'), // New slow audio button
-        replayButton: document.getElementById('replayButton'), // New replay button
+        slowAudioButton: document.getElementById('slowAudioButton'),
+        replayButton: document.getElementById('replayButton'),
         voiceSelect: document.getElementById('voiceSelect'),
         rateControl: document.getElementById('rateControl'),
         pitchControl: document.getElementById('pitchControl'),
@@ -43,10 +431,10 @@ let quizData = []; // Will hold the quiz questions
         newWord: document.getElementById('newWord'),
         newFullSentence: document.getElementById('newFullSentence'),
         addSentenceButton: document.getElementById('addSentenceButton'),
-        addAnotherButton: document.getElementById('addAnotherButton'), // New "Add Another" button
+        addAnotherButton: document.getElementById('addAnotherButton'),
         sentenceInputMessage: document.getElementById('sentenceInputMessage'),
-        reviewIncorrectDisplay: document.getElementById('reviewIncorrectDisplay'), // Review incorrect display
-        reviewIncorrectButton: document.getElementById('reviewIncorrectButton') // Review incorrect button
+        reviewIncorrectDisplay: document.getElementById('reviewIncorrectDisplay'),
+        reviewIncorrectButton: document.getElementById('reviewIncorrectButton')
     };
 
 
@@ -198,8 +586,7 @@ let quizData = []; // Will hold the quiz questions
 
         elements.sentenceInputMessage.textContent = "Sentence added successfully!";
         elements.sentenceInputMessage.className = 'message correct';
-        elements.addAnotherButton.style.display = 'inline-block'; // Show "Add Another" button
-
+        elements.addAnotherButton.style.display = 'inline-block';
 
         elements.newSentenceBlank.value = '';
         elements.newWord.value = '';
@@ -214,7 +601,7 @@ let quizData = []; // Will hold the quiz questions
         elements.newFullSentence.value = '';
         elements.sentenceInputMessage.textContent = '';
         elements.sentenceInputMessage.className = 'message';
-        elements.addAnotherButton.style.display = 'none'; // Hide "Add Another" button again
+        elements.addAnotherButton.style.display = 'none';
     }
 
 
@@ -225,8 +612,8 @@ let quizData = []; // Will hold the quiz questions
             elements.sentence.classList.add('error');
             elements.audioToggle.style.display = 'none';
             elements.voiceSettings.style.display = 'none';
-            elements.replayButton.style.display = 'none'; // Hide replay button if no synth
-            elements.slowAudioButton.style.display = 'none'; // Hide slow audio button if no synth
+            elements.replayButton.style.display = 'none';
+            elements.slowAudioButton.style.display = 'none';
             return;
         }
 
@@ -329,11 +716,11 @@ let quizData = []; // Will hold the quiz questions
     function startQuiz() {
         currentIndex = 0;
         score = 0;
-        incorrectSentences = []; // Clear incorrect sentences for a new quiz
-        localStorage.removeItem(INCORRECT_SENTENCES_KEY); // Clear any previous incorrect sentences from storage
+        incorrectSentences = [];
+        localStorage.removeItem(INCORRECT_SENTENCES_KEY);
         elements.answer.style.display = 'block';
         elements.message.style.display = 'block';
-        elements.reviewIncorrectDisplay.style.display = 'none'; // Hide review button at quiz start
+        elements.reviewIncorrectDisplay.style.display = 'none';
         helpToggle = 0;
         elements.helpButton.textContent = '💡 Help';
         updateUI();
@@ -344,10 +731,10 @@ let quizData = []; // Will hold the quiz questions
             const progress = quizData.length ? (currentIndex / quizData.length) * 100 : 0;
             if (currentIndex >= quizData.length) {
                 elements.progressBar.style.width = `${progress}%`;
-                elements.sentence.textContent = `🎉 Quiz Completed! Great job! Your score: ${score}/${quizData.length}`; // Motivational completion message
+                elements.sentence.textContent = `🎉 Quiz Completed! Great job! Your score: ${score}/${quizData.length}`;
                 elements.answer.style.display = 'none';
                 elements.message.style.display = 'none';
-                elements.sentenceHighlight.innerHTML = ''; // Clear highlight
+                elements.sentenceHighlight.innerHTML = '';
                 elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
                 if (score > highScore) {
                     highScore = score;
@@ -357,21 +744,21 @@ let quizData = []; // Will hold the quiz questions
                 localStorage.setItem(QUIZ_COUNT_KEY, String(quizCount));
                 updateScoreDisplay();
                 if (incorrectSentences.length > 0) {
-                    elements.reviewIncorrectDisplay.style.display = 'block'; // Show review button if there are incorrect answers
-                    localStorage.setItem(INCORRECT_SENTENCES_KEY, JSON.stringify(incorrectSentences)); // Store incorrect sentences for review
+                    elements.reviewIncorrectDisplay.style.display = 'block';
+                    localStorage.setItem(INCORRECT_SENTENCES_KEY, JSON.stringify(incorrectSentences));
                 } else {
-                    elements.reviewIncorrectDisplay.style.display = 'none'; // Hide review button if no incorrect answers
-                    localStorage.removeItem(INCORRECT_SENTENCES_KEY); // No incorrect sentences, so clear from storage
+                    elements.reviewIncorrectDisplay.style.display = 'none';
+                    localStorage.removeItem(INCORRECT_SENTENCES_KEY);
                 }
 
             } else {
                 elements.progressBar.style.width = `${progress}%`;
                 elements.sentence.textContent = `Question ${currentIndex + 1} of ${quizData.length}:`;
-                elements.sentenceHighlight.textContent = quizData[currentIndex].sentence; // Put sentence in highlight div
+                elements.sentenceHighlight.textContent = quizData[currentIndex].sentence;
                 elements.answer.value = '';
                 elements.message.textContent = '';
                 elements.message.className = 'message';
-                elements.sentenceHighlight.innerHTML = quizData[currentIndex].sentence; // Reset highlight display for new sentence
+                elements.sentenceHighlight.innerHTML = quizData[currentIndex].sentence;
                 if (!isMuted) speak(quizData[currentIndex].fullSentence);
                 elements.answer.focus();
             }
@@ -391,11 +778,11 @@ let quizData = []; // Will hold the quiz questions
             utterance.pitch = parseFloat(elements.pitchControl.value);
 
             utterance.onstart = () => {
-                highlightSentence(text); // Start highlighting when speech starts
+                highlightSentence(text);
             };
 
             utterance.onend = () => {
-                clearHighlight(); // Clear highlighting when speech ends
+                clearHighlight();
             };
 
 
@@ -409,16 +796,15 @@ let quizData = []; // Will hold the quiz questions
     }
 
     function highlightSentence(text) {
-        const words = text.split(/\s+/); // Split sentence into words by spaces
-        elements.sentenceHighlight.innerHTML = ''; // Clear existing content
+        const words = text.split(/\s+/);
+        elements.sentenceHighlight.innerHTML = '';
         words.forEach((word, index) => {
             const wordSpan = document.createElement('span');
-            wordSpan.textContent = word + (index < words.length - 1 ? ' ' : ''); // Add space after each word except last
-            wordSpan.dataset.index = index; // Store word index for timing (if needed for more advanced highlighting)
+            wordSpan.textContent = word + (index < words.length - 1 ? ' ' : '');
+            wordSpan.dataset.index = index;
             elements.sentenceHighlight.appendChild(wordSpan);
         });
 
-        // Basic word-by-word highlighting (can be refined with more precise timing if needed)
         let wordIndex = 0;
         const highlightInterval = setInterval(() => {
             if (wordIndex < words.length) {
@@ -428,9 +814,9 @@ let quizData = []; // Will hold the quiz questions
                 }
                 wordIndex++;
             } else {
-                clearInterval(highlightInterval); // Stop when all words highlighted
+                clearInterval(highlightInterval);
             }
-        }, 150 * parseFloat(elements.rateControl.value)); // Adjust timing based on speech rate (very basic)
+        }, 150 * parseFloat(elements.rateControl.value));
     }
 
     function clearHighlight() {
@@ -464,7 +850,7 @@ let quizData = []; // Will hold the quiz questions
             elements.message.textContent = `❌ Incorrect. The word was "${quizData[currentIndex].word}". Try the next one!`;
             elements.message.className = 'message incorrect feedback-animation';
             speak(quizData[currentIndex].fullSentence);
-            incorrectSentences.push(quizData[currentIndex]); // Add incorrect sentence to review array
+            incorrectSentences.push(quizData[currentIndex]);
             setTimeout(() => {
                 updateUI();
             }, 1500);
@@ -478,10 +864,10 @@ let quizData = []; // Will hold the quiz questions
             elements.message.textContent = '';
             elements.message.className = 'message';
         } else if (helpToggle === 1) {
-            elements.helpButton.textContent = '🔊 Replay'; // Changed for clarity
-            elements.message.textContent = 'Replaying sentence.'; // Feedback for replay
+            elements.helpButton.textContent = '🔊 Replay';
+            elements.message.textContent = 'Replaying sentence.';
             elements.message.className = 'message help-hint';
-            replaySentence(); // Call replay function
+            replaySentence();
         } else if (helpToggle === 2) {
             elements.helpButton.textContent = 'Hint';
             if (quizData[currentIndex]) {
@@ -502,8 +888,8 @@ let quizData = []; // Will hold the quiz questions
     }
 
     function setSlowAudio() {
-        elements.rateControl.value = '0.5'; // Set slow rate
-        saveRatePreference(); // Save preference
+        elements.rateControl.value = '0.5';
+        saveRatePreference();
         elements.message.textContent = 'Speech rate set to slower speed.';
         elements.message.className = 'message help-hint';
     }
@@ -511,11 +897,11 @@ let quizData = []; // Will hold the quiz questions
     function startReviewQuiz() {
         const storedIncorrectSentences = localStorage.getItem(INCORRECT_SENTENCES_KEY);
         if (storedIncorrectSentences) {
-            quizData = JSON.parse(storedIncorrectSentences); // Load incorrect sentences into quizData
+            quizData = JSON.parse(storedIncorrectSentences);
             currentIndex = 0;
             score = 0;
-            elements.reviewIncorrectDisplay.style.display = 'none'; // Hide review button during review
-            updateUI(); // Start quiz with incorrect sentences
+            elements.reviewIncorrectDisplay.style.display = 'none';
+            updateUI();
         } else {
             elements.message.textContent = 'No incorrect answers to review.';
             elements.message.className = 'message error';
@@ -543,3 +929,6 @@ let quizData = []; // Will hold the quiz questions
     elements.answer.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') checkAnswer();
     });
+    </script>
+</body>
+</html>
