@@ -15,6 +15,7 @@
         }
         .container { max-width: 600px; margin: 0 auto; }
         #category-select-card { /* Card for category selection */
+            display: none; /* Hide category selection as data source is now a flat list from Google Sheet */
             background: white;
             padding: 15px;
             border-radius: 15px;
@@ -80,6 +81,7 @@
         .correct { color: #34a853; }
         .incorrect { color: #ea4335; }
         .loading { color: #1a73e8; font-weight: 500; }
+        .error { color: #ea4335; font-weight: 500; }
         .button-group {
             display: flex;
             flex-wrap: wrap;
@@ -99,6 +101,7 @@
             font-style: italic;
         }
         .definition { /* Style for word definition */
+            display: none; /* Hide definition display as definition is not in this data source */
             font-size: 0.9em;
             color: #777;
             margin-top: 8px;
@@ -128,119 +131,22 @@
     </div>
 
     <script>
-        // Enhanced Data Source: Local JSON with categories and definitions
-        const quizDataLocal = {
-            "Everyday English": [
-                {
-                    "word": "ubiquitous",
-                    "sentence": "Smartphones have become ____ in modern society.",
-                    "fullSentence": "Smartphones have become ubiquitous in modern society.",
-                    "definition": "Present, appearing, or found everywhere."
-                },
-                {
-                    "word": "happy",
-                    "sentence": "I am ____ to help you.",
-                    "fullSentence": "I am happy to help you.",
-                    "definition": "Feeling or showing pleasure or contentment."
-                },
-                {
-                    "word": "beautiful",
-                    "sentence": "The sunset was absolutely ____.",
-                    "fullSentence": "The sunset was absolutely beautiful.",
-                    "definition": "Pleasing the senses or mind aesthetically."
-                },
-                {
-                    "word": "delicious",
-                    "sentence": "This cake is ____.",
-                    "fullSentence": "This cake is delicious.",
-                    "definition": "Highly pleasant to the taste."
-                },
-                {
-                    "word": "interesting",
-                    "sentence": "That's a very ____ idea.",
-                    "fullSentence": "That's a very interesting idea.",
-                    "definition": "Arousing curiosity or interest; fascinating."
-                }
-            ],
-            "Descriptive Adjectives": [
-                {
-                    "word": "mellifluous",
-                    "sentence": "The singer has a ____ voice.",
-                    "fullSentence": "The singer has a mellifluous voice.",
-                    "definition": "Sweet or musical; pleasant to hear."
-                },
-                {
-                    "word": "vibrant",
-                    "sentence": "The city is ____ and full of life.",
-                    "fullSentence": "The city is vibrant and full of life.",
-                    "definition": "Full of energy and enthusiasm; bright and striking."
-                },
-                {
-                    "word": "serene",
-                    "sentence": "The lake was calm and ____.",
-                    "fullSentence": "The lake was calm and serene.",
-                    "definition": "Calm, peaceful, and untroubled; tranquil."
-                },
-                {
-                    "word": "exquisite",
-                    "sentence": "She wore an ____ dress.",
-                    "fullSentence": "She wore an exquisite dress.",
-                    "definition": "Extremely beautiful and, typically, delicate."
-                },
-                {
-                    "word": "radiant",
-                    "sentence": "Her smile was ____.",
-                    "fullSentence": "Her smile was radiant.",
-                    "definition": "Sending out light; shining or glowing brightly."
-                }
-            ],
-            "Verbs of Action": [
-                 {
-                    "word": "achieve",
-                    "sentence": "With hard work, you can ____ your goals.",
-                    "fullSentence": "With hard work, you can achieve your goals.",
-                    "definition": "Successfully reach or obtain (a desired aim, result, or objective)."
-                },
-                {
-                    "word": "explore",
-                    "sentence": "Let's ____ the new park.",
-                    "fullSentence": "Let's explore the new park.",
-                    "definition": "Inquire into or discuss (a subject or issue) in detail."
-                },
-                {
-                    "word": "create",
-                    "sentence": "Artists ____ beautiful things.",
-                    "fullSentence": "Artists create beautiful things.",
-                    "definition": "Bring (something) into existence."
-                },
-                {
-                    "word": "discover",
-                    "sentence": "Scientists ____ new things all the time.",
-                    "fullSentence": "Scientists discover new things all the time.",
-                    "definition": "Find (something or someone) unexpectedly or while searching for something else."
-                },
-                {
-                    "word": "imagine",
-                    "sentence": "____ a world without war.",
-                    "fullSentence": "Imagine a world without war.",
-                    "definition": "Form a mental image or concept of something not actually present to the senses."
-                }
-            ]
-            // Add more categories and word lists as needed!
-        };
+        const googleSheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV27xPm4MU3t9uEkoehyb_LZs176_3yxDOFEedRZqf6vEzoECt8X7yEPsKpMfB9A/pub?output=csv"; // Your Google Sheet URL - ALREADY PROVIDED
 
-        let quizData = []; // Will hold the quiz questions for the current category
+        let quizData = []; // Will hold the quiz questions
         let currentIndex = 0;
         let score = 0;
         let synth = window.speechSynthesis;
         let googleVoice = null;
         let isMuted = false;
-        let helpToggle = 0; // 0 = off, 1 = replay, 2 = hint
+        let helpToggle = 0;
         let lastSpeakTime = 0;
+        const CACHE_KEY = 'quizDataCache_v4'; // Versioned cache key for updates
+        const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
         // DOM Elements
         const elements = {
-            categorySelect: document.getElementById('categorySelect'),
+            categorySelect: document.getElementById('categorySelect'), // Still present in HTML but hidden
             sentence: document.getElementById('sentence'),
             answer: document.getElementById('answer'),
             message: document.getElementById('message'),
@@ -250,49 +156,62 @@
             audioToggle: document.getElementById('audioToggle')
         };
 
-        // Function to load quiz data based on selected category
-        async function loadQuizData(selectedCategory = 'all') {
-            elements.sentence.textContent = "Loading quiz...";
-            elements.sentence.classList.add('loading');
-
-            await new Promise(resolve => setTimeout(resolve, 100)); // Simulate loading
-
-            if (selectedCategory === 'all' || !quizDataLocal[selectedCategory]) {
-                // If "All Categories" or invalid category, flatten all categories into one array
-                quizData = Object.values(quizDataLocal).flat();
-            } else {
-                quizData = quizDataLocal[selectedCategory];
-            }
-
-            if (!quizData || quizData.length === 0) {
-                elements.sentence.textContent = "No words in this category yet.";
-                elements.sentence.classList.remove('loading');
-                quizData = []; // Ensure quizData is empty to prevent errors
-                return;
-            }
-
-            elements.sentence.classList.remove('loading');
-            startQuiz();
-        }
-
-        // Populate category dropdown
-        function populateCategories() {
-            const categories = Object.keys(quizDataLocal);
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                elements.categorySelect.appendChild(option);
+        // CSV Parser (Adjusted for 2 columns - Word, Sentence)
+        function csvToArray(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines.shift().split(','); // Get headers, though we might not strictly use them now
+            return lines.map(line => {
+                const values = line.split(',');
+                return { // Hardcode property names based on column order (A=word, B=sentence)
+                    word: values[0] ? values[0].trim() : '', // Column A (Word)
+                    sentence: values[1] ? values[1].trim() : '' // Column B (Sentence)
+                };
             });
         }
 
-        function selectCategory() {
-            const selectedCategory = elements.categorySelect.value;
-            loadQuizData(selectedCategory);
+
+        // Load data from Google Sheet
+        async function loadQuizData() {
+            elements.sentence.textContent = "Loading quiz data...";
+            elements.sentence.classList.add('loading');
+
+            try {
+                const response = await fetch(googleSheetUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvData = await response.text();
+                const parsedData = csvToArray(csvData);
+
+                quizData = parsedData.map(item => ({ // Map CSV data to quizData format, definition is now undefined
+                    word: item.word,
+                    sentence: item.sentence,
+                    fullSentence: item.sentence, // fullSentence is same as sentence now
+                    definition: undefined // Definition is not in this sheet, set to undefined
+                }));
+
+                if (quizData.length === 0) {
+                    elements.sentence.textContent = "No quiz data found in the Google Sheet (or empty sheet).";
+                    elements.sentence.classList.remove('loading');
+                    elements.sentence.classList.add('error');
+                    return;
+                }
+
+
+                elements.sentence.classList.remove('loading');
+                startQuiz();
+
+
+            } catch (error) {
+                console.error("Fetching or parsing quiz data error:", error);
+                elements.sentence.textContent = "Failed to load quiz data. Please check your connection and Google Sheet URL.";
+                elements.sentence.classList.remove('loading');
+                elements.sentence.classList.add('error');
+            }
         }
 
 
-        // Voice setup (same as before)
+        // Voice setup (Prioritize female US voice) - SAME AS BEFORE
         async function setupVoice() {
             if (!synth) {
                 console.warn('Speech synthesis not supported');
@@ -312,19 +231,26 @@
                 }, 2000);
             });
 
-             googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+            // Prioritized voice selection:
+            googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female')); // 1. Google Female US
             if (!googleVoice) {
-                googleVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+                googleVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female')); // 2. Any Female US (if no Google female)
             }
             if (!googleVoice) {
-                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US');
+                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US'); // 3. Google US (any gender, if no female US)
             }
             if (!googleVoice) {
-                googleVoice = voices[0]; // Fallback to the first available voice
+                googleVoice = voices.find(v => v.lang === 'en-US'); // 4. Any US English voice (if no Google US)
+            }
+            if (!googleVoice) {
+                googleVoice = voices.find(v => v.name.toLowerCase().includes('female')); // 5. Any Female voice (if no US voices at all)
+            }
+            if (!googleVoice) {
+                googleVoice = voices[0]; // 6. Fallback to the very first voice available (if absolutely nothing else)
             }
         }
 
-        // Quiz functions (mostly same logic, UI updates enhanced)
+        // Quiz functions (mostly same logic, UI updates enhanced) - SAME AS BEFORE
         function startQuiz() {
             currentIndex = 0;
             score = 0;
@@ -343,7 +269,7 @@
                     elements.sentence.textContent = `🎉 Quiz Completed! Your score: ${score}/${quizData.length}`;
                     elements.answer.style.display = 'none';
                     elements.message.style.display = 'none';
-                    elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button> <button onclick="resetCategory()" aria-label="Change Category">Change Category</button>';
+                    elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
                 } else {
                     elements.progressBar.style.width = `${progress}%`;
                     elements.sentence.textContent = `Question ${currentIndex + 1} of ${quizData.length}: ${quizData[currentIndex].sentence}`;
@@ -379,9 +305,7 @@
             const correct = quizData[currentIndex]?.word.toLowerCase();
             if (answer === correct) {
                 elements.message.textContent = "✅ Correct! ";
-                if (quizData[currentIndex].definition) {
-                    elements.message.textContent += `<div class="definition">Definition: ${quizData[currentIndex].definition}</div>`;
-                }
+                // Definition is not used/displayed in this version as per request
                 elements.message.className = 'message correct feedback-animation';
                 score++;
                 currentIndex++;
@@ -423,23 +347,12 @@
             elements.audioToggle.textContent = isMuted ? '🔇 Off' : '🔊 On';
         }
 
-        function resetCategory() {
-            elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Submit answer">Restart Quiz</button>'; // Reset buttons
-            elements.answer.style.display = 'block'; // Ensure answer input is visible
-            elements.message.style.display = 'block'; // Ensure message area is visible
-            elements.progressBar.style.width = `0%`;
-            elements.sentence.textContent = `Choose a category above to start a new quiz.`;
-            quizData = []; // Clear quiz data
-            currentIndex = 0;
-            score = 0;
-        }
-
 
         // Initialize
         window.onload = async () => {
-            populateCategories(); // Populate categories on load
+            // category selection is hidden now, no need to populate categories in this version
             await setupVoice();
-            loadQuizData(); // Load default category (all or first category) initially
+            loadQuizData(); // Load data from Google Sheet on page load
         };
 
         // Enter key support
