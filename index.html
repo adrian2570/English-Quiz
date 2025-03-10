@@ -32,6 +32,16 @@
       font-size: 16px;
       box-sizing: border-box;
     }
+    button {
+      padding: 8px 16px;
+      margin: 4px 2px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #1a73e8;
+      color: white;
+      font-weight: 500;
+    }
     #progress {
       height: 4px;
       background: #e9ecef;
@@ -48,13 +58,47 @@
       font-size: 1.2em;
       margin: 15px 0;
     }
-    #message {
+    #message, #hint {
       margin: 10px 0;
       font-weight: 500;
+      transition: all 0.3s ease;
     }
-    .error {
-      color: #d93025;
-      font-weight: 500;
+    .correct { color: #34a853; }
+    .incorrect { color: #ea4335; }
+    .loading { color: #1a73e8; font-weight: 500; }
+    .error { color: #d93025; font-weight: 500; }
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    #errorModal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      text-align: center;
+      z-index: 1000;
+    }
+    #errorModal button {
+      background: #d93025;
+      margin-top: 10px;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
     }
   </style>
 </head>
@@ -63,103 +107,102 @@
     <div class="card">
       <div id="progress"><div id="progressBar"></div></div>
       <p id="sentence"></p>
-      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none">
+      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none" aria-label="Answer input">
       <div id="message"></div>
+      <div id="hint"></div>
+      <div class="button-group">
+        <button id="submitButton" onclick="checkAnswer()">Submit</button>
+        <button id="helpButton" onclick="toggleHelp()" aria-label="Help options">🔊 Help</button>
+        <button id="skipButton" onclick="skipQuestion()" aria-label="Skip question">⏭️ Skip</button>
+        <button id="audioToggle" onclick="toggleAudio()" aria-label="Toggle audio">🔊 On</button>
+      </div>
     </div>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div id="errorModal">
+    <p id="errorMessage"></p>
+    <button onclick="reloadPage()">Try Again</button>
   </div>
 
   <script>
-    // Google Sheet configuration
     const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTV27xPm4MU3t9uEkoehyb_LZs176_3yxDOFEedRZqf6vEzoECt8X7yEPsKpMfB9A/pub?output=csv';
     let quizData = [];
     let currentIndex = 0;
     let score = 0;
+    let skippedQuestions = [];
     let synth = window.speechSynthesis;
     let googleVoice = null;
+    let isMuted = false;
+    let helpToggle = 0; // 0 = off, 1 = replay, 2 = hint
 
-    // Utility function to display errors
     function displayError(message) {
-      const sentenceElement = document.getElementById('sentence');
-      sentenceElement.textContent = message;
-      sentenceElement.classList.add('error');
-      document.getElementById('answer').style.display = 'none';
-      console.error(message);
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorModal').style.display = 'block';
+      document.getElementById('overlay').style.display = 'block';
+      document.querySelector('.card').style.display = 'none';
     }
 
-    // Load data from Google Sheet with retry logic
+    function reloadPage() {
+      location.reload();
+    }
+
     async function loadSheetData(retries = 3, delay = 1000) {
+      document.getElementById('sentence').textContent = "Loading quiz...";
+      document.getElementById('sentence').classList.add('loading');
       for (let attempt = 1; attempt <= retries; attempt++) {
         try {
           const response = await fetch(SHEET_URL, { cache: 'no-store' });
           if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
           const csvData = await response.text();
-
           if (!csvData.trim()) throw new Error('Received empty data from sheet');
-
-          const rows = csvData.split('\n').slice(1); // Skip header row
+          const rows = csvData.split('\n').slice(1);
           quizData = rows.map(row => {
-            const [word, example] = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Handle commas within quoted strings
+            const [word, example] = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
             if (!word || !example) throw new Error(`Invalid row format: ${row}`);
             const regex = new RegExp(`\\b${word.trim()}\\b`, 'gi');
-            return {
-              word: word.trim(),
-              sentence: example.trim().replace(regex, '____'),
-              fullSentence: example.trim()
-            };
+            return { word: word.trim(), sentence: example.trim().replace(regex, '____'), fullSentence: example.trim() };
           }).filter(item => item.word && item.sentence);
-
           if (quizData.length === 0) throw new Error('No valid quiz data found');
+          document.getElementById('sentence').classList.remove('loading');
           startQuiz();
-          return; // Success, exit retry loop
+          return;
         } catch (error) {
           console.error(`Attempt ${attempt} failed: ${error.message}`);
-          if (attempt === retries) {
-            displayError('Failed to load quiz data after multiple attempts. Please check your connection or try again later.');
-          } else {
-            await new Promise(resolve => setTimeout(resolve, delay)); // Wait before retry
-          }
+          if (attempt === retries) displayError('Oops! We couldn’t load the quiz. Please check your connection and try again.');
+          else await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
 
-    // Voice setup with fallback
     async function setupVoice() {
       try {
-        if (!synth) throw new Error('Speech synthesis not supported in this browser');
+        if (!synth) throw new Error('Speech synthesis not supported');
         const voices = await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Voices not loaded in time')), 5000);
-          synth.onvoiceschanged = () => {
-            clearTimeout(timeout);
-            resolve(synth.getVoices());
-          };
-          if (synth.getVoices().length) {
-            clearTimeout(timeout);
-            resolve(synth.getVoices());
-          }
+          const timeout = setTimeout(() => reject(new Error('Voices not loaded')), 5000);
+          synth.onvoiceschanged = () => { clearTimeout(timeout); resolve(synth.getVoices()); };
+          if (synth.getVoices().length) { clearTimeout(timeout); resolve(synth.getVoices()); }
         });
-        googleVoice = voices.find(v => 
-          v.voiceURI.includes('Google') && 
-          v.lang === 'en-US' &&
-          v.name.toLowerCase().includes('female')
-        ) || voices[0];
+        googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female')) || voices[0];
         if (!googleVoice) console.warn('No preferred voice found; using default');
       } catch (error) {
         console.warn(`Voice setup failed: ${error.message}. Continuing without speech.`);
-        googleVoice = null; // Disable speech if setup fails
+        googleVoice = null;
       }
     }
 
-    // Quiz functions
     function startQuiz() {
       currentIndex = 0;
       score = 0;
+      skippedQuestions = [];
       updateProgress();
       showNextQuestion();
     }
 
     function updateProgress() {
-      const progress = quizData.length ? (currentIndex / quizData.length) * 100 : 0;
+      const totalQuestions = quizData.length + skippedQuestions.length;
+      const progress = totalQuestions ? (currentIndex / totalQuestions) * 100 : 0;
       document.getElementById('progressBar').style.width = `${progress}%`;
+      if (currentIndex < quizData.length) document.getElementById('sentence').textContent = `Question ${currentIndex + 1} of ${totalQuestions}: ${quizData[currentIndex].sentence}`;
     }
 
     function showNextQuestion() {
@@ -168,70 +211,12 @@
         return;
       }
       if (currentIndex >= quizData.length) {
-        document.getElementById('sentence').textContent = `Quiz Complete! Score: ${score}/${quizData.length}`;
-        document.getElementById('answer').style.display = 'none';
-        document.getElementById('message').textContent = '';
-        return;
-      }
-      const current = quizData[currentIndex];
-      document.getElementById('sentence').textContent = current.sentence;
-      speak(current.fullSentence);
-      document.getElementById('answer').value = '';
-      document.getElementById('message').textContent = '';
-      updateProgress();
-    }
-
-    function speak(text) {
-      if (!synth || !googleVoice) {
-        console.log('Speech unavailable: ' + text);
-        return;
-      }
-      try {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = googleVoice;
-        utterance.rate = 1.0;
-        utterance.onerror = (e) => console.error('Speech error:', e);
-        synth.cancel();
-        synth.speak(utterance);
-      } catch (error) {
-        console.error('Speech synthesis failed:', error);
-      }
-    }
-
-    // Answer checking
-    document.getElementById('answer').addEventListener('keypress', e => {
-      if (e.key !== 'Enter') return;
-      const answer = e.target.value.trim().toLowerCase();
-      if (!answer) {
-        document.getElementById('message').textContent = "Please enter a word!";
-        return;
-      }
-      const correct = quizData[currentIndex]?.word.toLowerCase();
-      if (!correct) {
-        console.error('No current question data');
-        document.getElementById('message').textContent = "Error: No question data!";
-        return;
-      }
-      if (answer === correct) {
-        document.getElementById('message').textContent = "✅ Correct!";
-        score++;
-        currentIndex++;
-        setTimeout(showNextQuestion, 1000);
-      } else {
-        document.getElementById('message').textContent = "❌ Try again!";
-        speak(quizData[currentIndex].fullSentence);
-      }
-    });
-
-    // Initialize with error handling
-    window.onload = async () => {
-      try {
-        await setupVoice();
-        await loadSheetData();
-      } catch (error) {
-        displayError('Initialization failed. Please reload the page.');
-      }
-    };
-  </script>
-</body>
-</html>
+        if (skippedQuestions.length > 0) {
+          quizData = [...skippedQuestions];
+          skippedQuestions = [];
+          currentIndex = 0;
+          updateProgress();
+          showNextQuestion();
+        } else {
+          document.getElementById('sentence').textContent = `🎉 Great job! Your score: ${score}/${quizData.length}`;
+          document.getElementBy
