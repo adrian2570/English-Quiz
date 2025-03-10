@@ -180,7 +180,7 @@
         }
 
 
-        // Voice setup with caching (same as before - can be improved if needed based on specific issues)
+        // Voice setup with caching (Slightly adjusted voice selection)
         async function setupVoice() {
             const cachedVoice = localStorage.getItem('voiceSettings');
             if (cachedVoice) {
@@ -199,7 +199,20 @@
                     }, 100);
                     setTimeout(() => clearInterval(id) || resolve([]), 2000);
                 });
-                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female')) || voices[0];
+
+                // Adjusted voice selection logic:
+                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+                if (!googleVoice) { // If specific Google female US voice not found, try for any US female voice
+                    googleVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'));
+                }
+                if (!googleVoice) { // If no US female voice, try for any Google US voice
+                    googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US');
+                }
+                if (!googleVoice) { // If still not found, just take the first voice available as fallback
+                    googleVoice = voices[0];
+                }
+
+
                 if (googleVoice) localStorage.setItem('voiceSettings', JSON.stringify(googleVoice));
             } catch (error) {
                 console.warn('Voice setup failed. Continuing without speech.');
