@@ -1,359 +1,322 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>English Word Quiz</title>
-  <style>
-    /* Your existing CSS */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 15px;
-      background: #f8f9fa;
-      color: #333;
-      overscroll-behavior: none;
-    }
-    .container { max-width: 600px; margin: 0 auto; }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 15px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin: 20px 0;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border: 2px solid #ddd;
-      border-radius: 10px;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    button {
-      padding: 8px 16px;
-      margin: 4px 4px;
-      border: none;
-      border-radius: 10px;
-      font-size: 14px;
-      background: #1a73e8;
-      color: white;
-      font-weight: 500;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    #progress {
-      height: 4px;
-      background: #e9ecef;
-      border-radius: 2px;
-      margin: 15px 0;
-    }
-    #progressBar {
-      height: 100%;
-      background: #1a73e8;
-      width: 0%;
-      transition: width 0.3s ease;
-    }
-    #sentence { font-size: 1.2em; margin: 15px 0; }
-    #message, #hint { margin: 10px 0; font-weight: 500; transition: opacity 0.3s ease; }
-    .correct { color: #34a853; }
-    .incorrect { color: #ea4335; }
-    .loading { color: #1a73e8; font-weight: 500; }
-    .error { color: #d93025; font-weight: 500; }
-    .button-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-    }
-    #errorModal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-      text-align: center;
-      z-index: 1000;
-    }
-    #errorModal button {
-      background: #d93025;
-      margin-top: 10px;
-    }
-    .overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 999;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>English Word Quiz Enhanced</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: #f8f9fa;
+            color: #333;
+            overscroll-behavior: none;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 6px 4px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #1a73e8;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background-color 0.3s ease; /* Smooth button hover effect */
+        }
+        button:hover {
+            background-color: #0e5cb8; /* Darker shade on hover */
+        }
+        #progress {
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            margin: 15px 0;
+        }
+        #progressBar {
+            height: 100%;
+            background: #1a73e8;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        #sentence { font-size: 1.2em; margin: 15px 0; }
+        #message { margin: 10px 0; font-weight: 500; transition: opacity 0.3s ease; opacity: 1; }
+        .correct { color: #34a853; }
+        .incorrect { color: #ea4335; }
+        .loading { color: #1a73e8; font-weight: 500; }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .feedback-animation { /* Animation for feedback messages */
+            animation: feedbackFade 1.5s forwards;
+        }
+        @keyframes feedbackFade {
+            0% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .help-hint { /* Style for hint messages */
+            color: #ffc107; /* Amber color for hints */
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <div id="progress"><div id="progressBar"></div></div>
-      <p id="sentence"></p>
-      <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none" aria-label="Answer input">
-      <div id="message"></div>
-      <div id="hint"></div>
-      <div class="button-group">
-        <button id="submitButton" onclick="checkAnswer()" aria-label="Submit answer">Submit</button>
-        <button id="helpButton" onclick="toggleHelp()" aria-label="Help options">🔊 Help</button>
-        <button id="skipButton" onclick="skipQuestion()" aria-label="Skip question">⏭️ Skip</button>
-        <button id="audioToggle" onclick="toggleAudio()" aria-label="Toggle audio">🔊 On</button>
-      </div>
+    <div class="container">
+        <div class="card">
+            <div id="progress"><div id="progressBar"></div></div>
+            <p id="sentence"></p>
+            <input type="text" id="answer" placeholder="Type missing word..." autocapitalize="none" aria-label="Answer input">
+            <div id="message"></div>
+            <div class="button-group">
+                <button id="submitButton" onclick="checkAnswer()" aria-label="Submit answer">Submit</button>
+                <button id="helpButton" onclick="toggleHelp()" aria-label="Help options">🔊 Help</button>
+                <button id="audioToggle" onclick="toggleAudio()" aria-label="Toggle audio">🔊 On</button>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="overlay" id="overlay"></div>
-  <div id="errorModal">
-    <p id="errorMessage"></p>
-    <button onclick="reloadPage()">Try Again</button>
-  </div>
 
-  <script>
-    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTV27xPm4MU3t9uEkoehyb_LZs176_3yxDOFEedRZqf6vEzoECt8X7yEPsKpMfB9A/pub?output=csv';
-    let quizData = [];
-    let currentIndex = 0;
-    let score = 0;
-    let skippedQuestions = [];
-    let synth = window.speechSynthesis;
-    let googleVoice = null;
-    let isMuted = false;
-    let helpToggle = 0;
-    let lastSpeakTime = 0;
-    const CACHE_KEY = 'quizDataCache';
-    const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
-
-    // DOM Elements
-    const elements = {
-      sentence: document.getElementById('sentence'),
-      answer: document.getElementById('answer'),
-      message: document.getElementById('message'),
-      hint: document.getElementById('hint'),
-      progressBar: document.getElementById('progressBar'),
-      buttonGroup: document.querySelector('.button-group'),
-      errorModal: document.getElementById('errorModal'),
-      errorMessage: document.getElementById('errorMessage'),
-      overlay: document.getElementById('overlay')
-    };
-
-    // Error display
-    function displayError(message) {
-      elements.errorMessage.textContent = message;
-      elements.errorModal.style.display = 'block';
-      elements.overlay.style.display = 'block';
-      document.querySelector('.card').style.display = 'none';
-    }
-
-    function reloadPage() {
-      location.reload();
-    }
-
-    // Web Worker for CSV parsing
-    const parseWorker = new Worker(URL.createObjectURL(new Blob([`
-      self.onmessage = function(e) {
-        const csvData = e.data;
-        const rows = csvData.split('\\n').slice(1);
-        const quizData = rows.map(row => {
-          const [word, example] = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-          if (!word || !example) return null;
-          const regex = new RegExp(\`\\\\b\${word.trim()}\\\\b\`, 'gi');
-          return {
-            word: word.trim(),
-            sentence: example.trim().replace(regex, '____'),
-            fullSentence: example.trim()
-          };
-        }).filter(item => item);
-        self.postMessage(quizData);
-      };
-    `], { type: 'text/javascript' })));
-
-    // Fetch and cache CSV data
-    async function loadSheetData(retries = 3, delay = 1000) {
-      elements.sentence.textContent = "Loading quiz...";
-      elements.sentence.classList.add('loading');
-
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-      if (cached.data && Date.now() - cached.timestamp < CACHE_EXPIRY) {
-        quizData = cached.data;
-        elements.sentence.classList.remove('loading');
-        startQuiz();
-        return;
-      }
-
-      for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-          const response = await fetch(SHEET_URL, { cache: 'default' });
-          if (!response.ok) throw new Error(\`HTTP error! Status: \${response.status}\`);
-          const csvData = await response.text();
-          if (!csvData.trim()) throw new Error('Received empty data from sheet');
-
-          quizData = await new Promise((resolve) => {
-            parseWorker.onmessage = (e) => resolve(e.data);
-            parseWorker.postMessage(csvData);
-          });
-
-          if (quizData.length === 0) throw new Error('No valid quiz data found');
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: quizData, timestamp: Date.now() }));
-          elements.sentence.classList.remove('loading');
-          startQuiz();
-          return;
-        } catch (error) {
-          console.error(\`Attempt \${attempt} failed: \${error.message}\`);
-          if (attempt === retries) displayError('Oops! We couldn’t load the quiz. Please check your connection and try again.');
-          else await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    // Voice setup with caching
-    async function setupVoice() {
-      const cachedVoice = localStorage.getItem('voiceSettings');
-      if (cachedVoice) {
-        googleVoice = JSON.parse(cachedVoice);
-        return;
-      }
-      try {
-        if (!synth) throw new Error('Speech synthesis not supported');
-        const voices = await new Promise((resolve) => {
-          const id = setInterval(() => {
-            const v = synth.getVoices();
-            if (v.length) {
-              clearInterval(id);
-              resolve(v);
+    <script>
+        // Enhanced Data Source: Local JSON instead of Google Sheet for better performance and control
+        const quizDataLocal = [
+            {
+                "word": "ubiquitous",
+                "sentence": "Smartphones have become ____ in modern society.",
+                "fullSentence": "Smartphones have become ubiquitous in modern society."
+            },
+            {
+                "word": "ephemeral",
+                "sentence": "Life is ____, enjoy every moment.",
+                "fullSentence": "Life is ephemeral, enjoy every moment."
+            },
+            {
+                "word": "serendipity",
+                "sentence": "We met by ____ at the airport.",
+                "fullSentence": "We met by serendipity at the airport."
+            },
+            {
+                "word": "mellifluous",
+                "sentence": "The singer has a ____ voice.",
+                "fullSentence": "The singer has a mellifluous voice."
+            },
+            {
+                "word": "quixotic",
+                "sentence": "His ideas were often described as ____.",
+                "fullSentence": "His ideas were often described as quixotic."
             }
-          }, 100);
-          setTimeout(() => clearInterval(id) || resolve([]), 2000);
-        });
-        googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female')) || voices[0];
-        if (googleVoice) localStorage.setItem('voiceSettings', JSON.stringify(googleVoice));
-        else console.warn('No preferred voice found; using default');
-      } catch (error) {
-        console.warn(\`Voice setup failed: \${error.message}. Continuing without speech.\`);
-        googleVoice = null;
-      }
-    }
+            // Add more words and sentences to expand the quiz
+        ];
 
-    // Quiz functions
-    function startQuiz() {
-      currentIndex = 0;
-      score = 0;
-      skippedQuestions = [];
-      updateUI();
-    }
+        let quizData = [];
+        let currentIndex = 0;
+        let score = 0;
+        let synth = window.speechSynthesis;
+        let googleVoice = null;
+        let isMuted = false;
+        let helpToggle = 0; // 0 = off, 1 = replay, 2 = hint
+        let lastSpeakTime = 0;
+        const CACHE_KEY = 'quizDataCache_v2'; // Versioned cache key for updates
+        const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
-    function updateUI() {
-      requestAnimationFrame(() => {
-        const totalQuestions = quizData.length + skippedQuestions.length;
-        const progress = totalQuestions ? (currentIndex / totalQuestions) * 100 : 0;
-        if (currentIndex >= quizData.length) {
-          if (skippedQuestions.length > 0) {
-            quizData = [...skippedQuestions];
-            skippedQuestions = [];
+        // DOM Elements
+        const elements = {
+            sentence: document.getElementById('sentence'),
+            answer: document.getElementById('answer'),
+            message: document.getElementById('message'),
+            progressBar: document.getElementById('progressBar'),
+            buttonGroup: document.querySelector('.button-group'),
+            helpButton: document.getElementById('helpButton'), // Added helpButton for text update
+            audioToggle: document.getElementById('audioToggle') // Added audioToggle for text update
+        };
+
+        // Load data from local JSON or cache
+        async function loadQuizData() {
+            elements.sentence.textContent = "Loading quiz...";
+            elements.sentence.classList.add('loading');
+
+            const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+            if (cached.data && Date.now() - cached.timestamp < CACHE_EXPIRY) {
+                quizData = cached.data;
+                elements.sentence.classList.remove('loading');
+                startQuiz();
+                return;
+            }
+
+            // Simulate fetching and processing data - now directly using local data
+            await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network delay if needed
+            quizData = quizDataLocal; // Assign local data directly
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: quizData, timestamp: Date.now() }));
+            elements.sentence.classList.remove('loading');
+            startQuiz();
+
+
+            if (!quizData || quizData.length === 0) {
+                elements.sentence.textContent = "Failed to load quiz data.";
+                elements.sentence.classList.remove('loading');
+                elements.sentence.classList.add('error');
+            }
+        }
+
+
+        // Voice setup with caching (same as before - can be improved if needed based on specific issues)
+        async function setupVoice() {
+            const cachedVoice = localStorage.getItem('voiceSettings');
+            if (cachedVoice) {
+                googleVoice = JSON.parse(cachedVoice);
+                return;
+            }
+            try {
+                if (!synth) throw new Error('Speech synthesis not supported');
+                const voices = await new Promise((resolve) => {
+                    const id = setInterval(() => {
+                        const v = synth.getVoices();
+                        if (v.length) {
+                            clearInterval(id);
+                            resolve(v);
+                        }
+                    }, 100);
+                    setTimeout(() => clearInterval(id) || resolve([]), 2000);
+                });
+                googleVoice = voices.find(v => v.voiceURI.includes('Google') && v.lang === 'en-US' && v.name.toLowerCase().includes('female')) || voices[0];
+                if (googleVoice) localStorage.setItem('voiceSettings', JSON.stringify(googleVoice));
+            } catch (error) {
+                console.warn('Voice setup failed. Continuing without speech.');
+                googleVoice = null;
+            }
+        }
+
+        // Quiz functions (mostly same logic, UI updates enhanced)
+        function startQuiz() {
             currentIndex = 0;
+            score = 0;
+            elements.answer.style.display = 'block'; // Ensure answer input is visible
+            elements.message.style.display = 'block'; // Ensure message area is visible
+            helpToggle = 0; // Reset help toggle on quiz restart
+            elements.helpButton.textContent = '🔊 Help'; // Reset help button text
             updateUI();
-          } else {
-            elements.sentence.textContent = \`🎉 Great job! Your score: \${score}/\${quizData.length}\`;
-            elements.answer.style.display = 'none';
-            elements.message.style.display = 'none';
-            elements.hint.style.display = 'none';
-            elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
-          }
-        } else {
-          elements.progressBar.style.width = \`\${progress}%\`;
-          elements.sentence.textContent = \`Question \${currentIndex + 1} of \${totalQuestions}: \${quizData[currentIndex].sentence}\`;
-          elements.answer.value = '';
-          elements.message.textContent = '';
-          elements.hint.textContent = '';
-          if (!isMuted) speak(quizData[currentIndex].fullSentence);
         }
-      });
-    }
 
-    function speak(text) {
-      if (!synth || !googleVoice || isMuted || Date.now() - lastSpeakTime < 500) return;
-      try {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = googleVoice;
-        utterance.rate = 1.0;
-        utterance.onerror = (e) => console.error('Speech error:', e);
-        synth.cancel();
-        synth.speak(utterance);
-        lastSpeakTime = Date.now();
-      } catch (error) {
-        console.error('Speech synthesis failed:', error);
-      }
-    }
-
-    function checkAnswer() {
-      const answer = elements.answer.value.trim().toLowerCase();
-      const correct = quizData[currentIndex]?.word.toLowerCase();
-      if (!correct) return;
-      if (answer === correct) {
-        elements.message.textContent = "✅ Correct!";
-        elements.message.classList.add('correct');
-        score++;
-        currentIndex++;
-        setTimeout(() => {
-          elements.message.classList.remove('correct');
-          updateUI();
-        }, 750);
-      } else {
-        elements.message.textContent = "❌ Try again!";
-        elements.message.classList.add('incorrect');
-        speak(quizData[currentIndex].fullSentence);
-        setTimeout(() => elements.message.classList.remove('incorrect'), 750);
-      }
-    }
-
-    function toggleHelp() {
-      helpToggle = (helpToggle + 1) % 3;
-      elements.helpButton.textContent = helpToggle === 0 ? '🔊 Help' : helpToggle === 1 ? '🔊 Replay' : '💡 Hint';
-      if (helpToggle === 1 && quizData[currentIndex]) speak(quizData[currentIndex].fullSentence);
-      else if (helpToggle === 2 && quizData[currentIndex]) elements.hint.textContent = \`Hint: Starts with '\${quizData[currentIndex].word[0]}'\`;
-      else elements.hint.textContent = '';
-    }
-
-    function skipQuestion() {
-      if (quizData[currentIndex]) {
-        skippedQuestions.push(quizData[currentIndex]);
-        elements.message.textContent = "Skipped! We'll revisit this later.";
-        currentIndex++;
-        setTimeout(updateUI, 500);
-      }
-    }
-
-    function toggleAudio() {
-      isMuted = !isMuted;
-      elements.audioToggle.textContent = isMuted ? '🔇 Off' : '🔊 On';
-    }
-
-    window.onload = async () => {
-      try {
-        await Promise.all([setupVoice(), loadSheetData()]);
-      } catch (error) {
-        displayError('Initialization failed. Please reload the page.');
-      }
-    };
-
-    document.addEventListener('keypress', e => {
-      if (e.key === 'Enter') {
-        if (document.querySelector('button[onclick="checkAnswer()"]').style.display !== 'none') {
-          checkAnswer();
-        } else {
-          nextQuestion();
+        function updateUI() {
+            requestAnimationFrame(() => {
+                const progress = quizData.length ? (currentIndex / quizData.length) * 100 : 0;
+                if (currentIndex >= quizData.length) {
+                    elements.progressBar.style.width = `${progress}%`;
+                    elements.sentence.textContent = `🎉 Quiz Completed! Your score: ${score}/${quizData.length}`;
+                    elements.answer.style.display = 'none';
+                    elements.message.style.display = 'none';
+                    elements.buttonGroup.innerHTML = '<button onclick="startQuiz()" aria-label="Restart quiz">Restart Quiz</button>';
+                } else {
+                    elements.progressBar.style.width = `${progress}%`;
+                    elements.sentence.textContent = `Question ${currentIndex + 1} of ${quizData.length}: ${quizData[currentIndex].sentence}`;
+                    elements.answer.value = '';
+                    elements.message.textContent = '';
+                    elements.message.className = 'message'; // Reset message class
+                    if (!isMuted) speak(quizData[currentIndex].fullSentence);
+                    elements.answer.focus(); // Automatically focus on input for next question
+                }
+            });
         }
-      }
-    });
-  </script>
+
+        function speak(text) {
+            if (!synth || !googleVoice || isMuted || Date.now() - lastSpeakTime < 500) return;
+            try {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = googleVoice;
+                utterance.rate = 0.9; // Slightly slower rate for better clarity
+                synth.cancel();
+                synth.speak(utterance);
+                lastSpeakTime = Date.now();
+            } catch (error) {
+                console.error('Speech synthesis failed:', error);
+            }
+        }
+
+        function checkAnswer() {
+            const answer = elements.answer.value.trim().toLowerCase();
+            if (!answer) {
+                elements.message.textContent = "Please enter a word!";
+                return;
+            }
+            const correct = quizData[currentIndex]?.word.toLowerCase();
+            if (answer === correct) {
+                elements.message.textContent = "✅ Correct!";
+                elements.message.className = 'message correct feedback-animation'; // Add classes for styling and animation
+                score++;
+                currentIndex++;
+                setTimeout(() => {
+                    updateUI();
+                }, 1500); // Delay to show feedback
+            } else {
+                elements.message.textContent = `❌ Incorrect. The word was "${quizData[currentIndex].word}". Try the next one!`;
+                elements.message.className = 'message incorrect feedback-animation'; // Add classes for styling and animation
+                speak(quizData[currentIndex].fullSentence); // Replay sentence on incorrect answer
+                setTimeout(() => {
+                    updateUI(); // Move to next question after feedback
+                }, 1500); // Delay to show feedback
+            }
+        }
+
+        function toggleHelp() {
+            helpToggle = (helpToggle + 1) % 3;
+            if (helpToggle === 0) {
+                elements.helpButton.textContent = '🔊 Help';
+                elements.message.textContent = '';
+                elements.message.className = 'message'; // Reset message class
+            } else if (helpToggle === 1) {
+                elements.helpButton.textContent = '🔊 Replay';
+                elements.message.textContent = '';
+                elements.message.className = 'message'; // Reset message class
+                if (quizData[currentIndex]) speak(quizData[currentIndex].fullSentence);
+            } else if (helpToggle === 2) {
+                elements.helpButton.textContent = '💡 Hint';
+                if (quizData[currentIndex]) {
+                    elements.message.textContent = `Hint: Starts with '${quizData[currentIndex].word[0]}...'`;
+                    elements.message.className = 'message help-hint feedback-animation'; // Use a different class for hints
+                }
+            }
+        }
+
+
+        function toggleAudio() {
+            isMuted = !isMuted;
+            elements.audioToggle.textContent = isMuted ? '🔇 Off' : '🔊 On';
+        }
+
+        // Initialize
+        window.onload = async () => {
+            try {
+                await Promise.all([setupVoice(), loadQuizData()]);
+            } catch (error) {
+                elements.sentence.textContent = "Initialization failed. Please reload the page.";
+            }
+        };
+
+        // Enter key support
+        elements.answer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkAnswer();
+        });
+    </script>
 </body>
 </html>
